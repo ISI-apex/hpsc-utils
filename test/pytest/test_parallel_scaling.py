@@ -17,35 +17,6 @@ def test_verify_HPPS_core_count(qemu_instance_per_mdl, host):
     for i in range(hpps_core_count):
         assert(str(i) in proc_nums), "Processor " + str(i) + " is missing from the processor list: " + str(proc_nums) + " from /proc/cpuinfo"
 
-# Verify that when scaling the NAS EP benchmark on the HPPS cores, the correct number
-# of threads is launched and that each thread is running on the expected core
-@pytest.mark.parametrize('num_threads', list(range(1, 9)))
-def test_parallel_scaling_with_varying_thread_counts(qemu_instance_per_mdl, host, num_threads):
-    # first set OMP_NUM_THREADS and OMP_PROC_BIND, then run the tester asynchronously
-    p = subprocess.Popen("ssh " + host + " \"export OMP_NUM_THREADS=" + str(num_threads) +"; export OMP_PROC_BIND=TRUE; " + tester_remote_path + "\"", stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, shell=True)
-    time.sleep(1)
-    # identify the process ID of the NAS benchmark
-    out = subprocess.run("ssh " + host + " ps ", stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, shell=True)
-    pid = re.search(r"\s+(\S+)\s+\S+\s+\S+\s+\S+\s+" + tester_remote_path, out.stdout).group(1)
-    # list all of the thread IDs for this process ID
-    # see https://stackoverflow.com/questions/8032372/how-can-i-see-which-cpu-core-a-thread-is-running-in for more info
-    out = subprocess.run("ssh " + host + " ls /proc/" + pid + "/task", stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, shell=True)
-    tid_list = out.stdout.split()
-    # confirm that the number of threads is what we expect
-    assert(len(tid_list) == num_threads)
-    thread_num = 0
-    for tid in tid_list:
-        out = subprocess.run("ssh " + host + " cat /proc/" + pid + "/task/" + tid + "/stat", stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, shell=True)
-        thread_stats = out.stdout.split()
-        # confirm that this thread is currently running
-        assert(thread_stats[2] == 'R')
-        # confirm that this thread is running on the expected core
-        assert(thread_stats[38] == str(thread_num))
-        thread_num += 1
-    # kill the current process before increasing the OMP thread count
-    out = subprocess.run("ssh " + host + " kill -9 " + pid, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, shell=True)
-    p.terminate()
-
 # Verify that scaling the NAS EP benchmark on the HPPS cores leads to speedup.
 # NOTE: This test often fails on AWS CodeBuild using 8 vCPUs when scaling from 4 to 8 OMP
 # threads.  This is because the vCPUs are overloaded- running on 72 vCPUs solves the problem.
