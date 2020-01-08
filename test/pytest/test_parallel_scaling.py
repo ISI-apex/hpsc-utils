@@ -17,10 +17,10 @@ def test_verify_HPPS_core_count(qemu_instance_per_mdl, host):
     for i in range(hpps_core_count):
         assert(str(i) in proc_nums), "Processor " + str(i) + " is missing from the processor list: " + str(proc_nums) + " from /proc/cpuinfo"
 
-# Verify that scaling the NAS EP benchmark on the HPPS cores leads to speedup.
+# Verify that OMP scaling the NAS EP benchmark on the HPPS cores leads to speedup.
 # NOTE: This test often fails on AWS CodeBuild using 8 vCPUs when scaling from 4 to 8 OMP
 # threads.  This is because the vCPUs are overloaded- running on 72 vCPUs solves the problem.
-def test_parallel_speedup(qemu_instance_per_mdl, host):
+def test_OMP_speedup(qemu_instance_per_mdl, host):
     executed_thread_counts = []
     executed_cpu_times = []
     for num_threads in [1,2,4,8]:
