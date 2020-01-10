@@ -1,0 +1,33 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - yum -y install https://centos7.iuscommunity.org/ius-release.rpm
+      - yum -y update
+      - yum -y group install "Development Tools"
+      - yum -y install uboot-tools pixman-devel libfdt-devel python36-pip
+      - pip3 install --upgrade pip
+      - pip3 install pyserial pexpect pytest pytest-timeout
+  
+  pre_build:
+    commands:
+      # create a config file for the HPPS hpscqemu host
+      - mkdir -p ~/.ssh/
+      - printf "Host hpscqemu\n     HostName localhost\n     User root\n     Port 2088\n     StrictHostKeyChecking no\n     UserKnownHostsFile=/dev/null\n" > ~/.ssh/config
+      
+  build:
+    commands:
+      - cd $CODEBUILD_SRC_DIR/hpsc-bsp/ssw/tests
+      - export TZ=America/New_York date
+      - now=$(date +"%Y_%m_%d_%H_%M_%S")
+      - pytest -sv --host hpscqemu --durations=0 test_dma.py test_interrupt_affinity.py test_mbox.py test_parallel_scaling.py test_shm.py test_timer_interrupt.py 2>&1 | tee results_${now}.txt
+
+#  post_build:
+#    commands:
+
+artifacts:
+  files:
+      # capture the test results files
+      - results_${now}.txt
+  base-directory: $CODEBUILD_SRC_DIR/hpsc-bsp/ssw/tests
