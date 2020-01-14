@@ -832,7 +832,35 @@ Once debugger succesfully attaches to ZeBu, the 'Commands' pane will accept
 commands. The commands seem to be compatible with GDB commands.  The commands
 given in this section are to be entered in the Command pane.
 
-#### Address spaces
+#### Troubleshooting attaching to ZeBu
+
+If attaching fails (especially, if ZeBu was quit while ARM DS IDE was still
+connected), check for stale resources on the ZeBu sever, and if any exist, exit
+ARM DS IDE, and remove the stale resources, as shown below.
+
+Check for semaphores:
+
+    $ ipcs -s
+
+If you see any under your username, then delete them with this command, where
+you substitute `ID` with the number in the `semid` column in the output from
+the above command:
+
+    $ ipcrm -s ID
+
+Also, remove these temporary files (if another user owns them, you'll have to
+ask that user to remove the files):
+
+    $ rm -f /tmp/VSTRM_SERVERD*
+
+Also, check for any running processes named `rddidap_serverd` and kill them:
+
+    $ pgrep rddidap_serverd
+    $ killall -9 rddidap_serverd
+
+Restart ARM DS IDE and ZeBu, and retry connecting.
+
+### Address spaces
 
 In the debugger there are separate address spaces, for each exception level and
 security state. To refer to a specific address space in an address expression,
@@ -857,7 +885,7 @@ or using the following command:
 
     interrupt
 
-#### Load executables
+### Load executables
 
 While the debugger is interrupted (see section above), you may load
 debug info and symbols from multiple executable binaries. Use the
@@ -896,7 +924,7 @@ directory (`ssw/prof/PROFILE`, where `PROFILE` is the name of the profile you
 are working on that starts with a `sys-....`), and add it into the Scripts
 view.
 
-#### Breakpoints
+### Breakpoints
 
 To set a breakpoint by function name, the function will be resolved to an
 address in the address space indicated when the binary was loaded with `file`
@@ -942,7 +970,7 @@ highlighted, check that the corresponding debug binary was loaded with the
 `file` or `add-symbol-file` command. You may try reloading the binary with the
 `file` comand.
 
-#### Detach the debugger from ZeBu
+### Detach the debugger from ZeBu
 
 To dettach the debugger from ZeBu (always do this before quitting ZeBu):
 
