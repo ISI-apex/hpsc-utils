@@ -46,9 +46,9 @@ CONF_TARGET:=$(CONF)/lib-target
 #
 # Toolchain for bare-metal. Ok if does not support for userspace, e.g.
 # aarch64-linux- from pre-built toolchains distributed at kernel.org
-CROSS_A53=aarch64-linux-gnu-
+CROSS_A53=aarch64-none-linux-gnu-
 # Toolchain for Linux userspace
-CROSS_A53_LINUX=aarch64-linux-gnu-
+CROSS_A53_LINUX=aarch64-none-linux-gnu-
 CROSS_R52=arm-none-eabi-
 CROSS_M4=arm-none-eabi-
 
