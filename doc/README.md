@@ -493,6 +493,11 @@ Build the and run the selected profile in Zebu, in one command:
 
     $ make prof/PROFILE/run/zebu
 
+To not launch the emulator automatically upon startup and instead use
+the `run` command manually (see below):
+
+	$ make prof/PROFILE/run/zebu ARGS="-S"
+
 In a different shell (also with SDK environment loaded!), connect to the serial
 console on HPPS UART:
 
@@ -505,6 +510,11 @@ At the `zRci` prompt, to pause the target execution:
 When paused, to continue running for some cycles:
 
     % run 10000000
+
+To collect a trace of the program counter (PC) register, execute the following
+command and hit Ctrl-C to stop tracing (the output file path is printed):
+
+	% source hw_get_pc.ucli
 
 To exit:
 

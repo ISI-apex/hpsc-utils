@@ -155,6 +155,9 @@ job:
 
     $ kill %1
 
+For more info about running in ZeBu see the respective section in main
+[README.md](README.md).
+
 To (incrementally) build run the selected profile in Qemu:
 
 	$ make ssw/prof/PROFILE/run/qemu
