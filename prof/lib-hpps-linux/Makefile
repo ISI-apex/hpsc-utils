@@ -3,6 +3,7 @@
 $(call push-prof)
 
 include $(CONF)/lib-hpps-a53/Makefile
+include $(CONF)/lib-trch-bm-hpps/Makefile
 
 PROF_CONF:=$(CONF)/$(call pop-prof)
 
