@@ -556,7 +556,7 @@ Event list to trace may also be specified via a file: `--trace events=/tmp/file,
 
 To decode the binary trace:
 
-    $ sdk/qemu/scripts/simpletrace.py sdk/bld/sysroot/usr/share/qemu/trace-events-all /tmp/mem.tr
+    $ python2 sdk/qemu/scripts/simpletrace.py sdk/bld/sysroot/usr/share/qemu/trace-events-all /tmp/mem.tr
 
 Debugging
 =========
