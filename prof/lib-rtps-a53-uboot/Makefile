@@ -14,6 +14,7 @@ PROF_ARTS += \
 $(PROF_BLD)/rtps/a53/u-boot.config: $(PROF_CONF)/rtps/a53/u-boot.config
 $(PROF_BLD)/rtps/a53/u-boot.env: $(PROF_CONF)/rtps/a53/u-boot.env
 
+$(PROF_BLD)/trch/syscfg.ini: $(PROF_CONF)/trch/syscfg.ini
 $(PROF_BLD)/trch/boot.sfs.mem.map: $(PROF_CONF)/trch/boot.sfs.mem.map
 
 # We're using DTB within the u-boot image, but if we ever split it, then:
