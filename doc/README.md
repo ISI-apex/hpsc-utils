@@ -533,6 +533,31 @@ The platform-specific artifacts for Zebu in `prof/PROFILE/bld/zebu` are:
 * `preload.zebu.mem.map`: directives for loading images into memories for Zebu
    TCL scripts
 
+Tracing
+=======
+
+Tracing in Qemu
+---------------
+
+Pass the `--trace event_id_pattern,file=/path/to/trace.tr` argument to Qemu.
+For a list of available events, see a file installed when Qemu is built,
+`sdk/bld/sysroot/usr/share/qemu/trace-events-all`.
+
+To pass arguments to Qemu, they must be passed to launch-qemu script, in the
+form of `cmd args...` (where `cmd` is `run` or `gdb`). To pass arguments to
+`launch-qemu` via the run target described in Section [Run a profile in
+qemu](#run-a-profile-in-qemu), set the `ARGS` make variable.
+
+For example, to trace accesses to a memory-mapped region of some device:
+
+    $ make ssw/prof/PROFILE/run/qemu ARGS="run --trace memory_region_*,file=/tmp/mem.tr"
+
+Event list to trace may also be specified via a file: `--trace events=/tmp/file,...`.
+
+To decode the binary trace:
+
+    $ sdk/qemu/scripts/simpletrace.py sdk/bld/sysroot/usr/share/qemu/trace-events-all /tmp/mem.tr
+
 Debugging
 =========
 
