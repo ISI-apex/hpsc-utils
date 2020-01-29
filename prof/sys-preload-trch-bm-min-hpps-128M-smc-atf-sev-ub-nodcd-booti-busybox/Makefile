@@ -1,10 +1,6 @@
-# Enable HPPS SMC-353 memory controller hardware in Qemu. Preload TRCH SSW
-# Bare-Metal App binary (configured with minimal feature set) into TRCH SRAM,
-# and ATF+U-boot+Linux binaries into HPPS DRAM by HW emulator (fast). Apply the
-# workaround for the hang in U-boot in Dcache disable (do not disable). Boot
-# TRCH into TRCH SSW Bare-Metal App, boot HPPS into Busybox on Linux
-# (configured with SMC-353 and NAND drivers and device tree nodes) via
-# U-boot+ATF.
+# Like sys-preload-trch-bm-min-hpps-128M-atf-sev-ub-nodcd-booti-busybox, but with
+# HPPS SMC-353 memory controller hardware model enabled in Qemu and SMC-353 and
+# NAND drivers enabled in Linux.
 
-include $(CONF)/sys-preload-trch-bm-min-hpps-128M-ub-nodcd-booti-busybox/Makefile
+include $(CONF)/sys-preload-trch-bm-min-hpps-128M-atf-sev-ub-nodcd-booti-busybox/Makefile
 include $(CONF)/lib-hpps-smc/Makefile

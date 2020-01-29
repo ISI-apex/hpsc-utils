@@ -3,11 +3,5 @@
 # minimal feature set) into TRCH SRAM, and load a bare-metal image into HPPS
 # DRAM by HW emulator (fast).
 
-include $(CONF)/platform/Makefile
-include $(CONF)/lib-preload-trch-bm/Makefile
-include $(CONF)/lib-trch-bm-min/Makefile
-include $(CONF)/lib-trch-bm-preload-boot/Makefile
-include $(CONF)/lib-trch-bm-hpps/Makefile
-include $(CONF)/lib-hpps-ddr-lo-128M/Makefile
+include $(CONF)/sys-preload-trch-bm-min-hpps-128M-bm/Makefile
 include $(CONF)/lib-hpps-smc/Makefile
-include $(CONF)/lib-hpps-bm/Makefile

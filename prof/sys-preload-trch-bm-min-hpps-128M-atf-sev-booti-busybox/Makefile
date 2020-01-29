@@ -1,14 +1,5 @@
-# Preload TRCH SSW Bare-Metal App binary (configured with minimal feature set)
-# into TRCH SRAM, and ATF+U-boot+Linux binaries (configured for non-SMP boot --
-# single core) into HPPS DRAM by HW emulator (fast). Apply the workaround for
-# the slow execution in Zebu (by adding SEV instruction in ATF).  Boot TRCH
-# into TRCH SSW Bare-Metal App, boot HPPS into Busybox on Linux via U-boot+ATF.
+# Like sys-preload-trch-bm-min-hpps-128M-booti-busybox, but with the workaround
+# for the slow execution in Zebu (by adding SEV instruction in ATF).
 
-include $(CONF)/platform/Makefile
-include $(CONF)/lib-preload-trch-bm/Makefile
-include $(CONF)/lib-trch-bm-min/Makefile
-include $(CONF)/lib-trch-bm-preload-boot/Makefile
-include $(CONF)/lib-hpps-busybox/Makefile
+include $(CONF)/sys-preload-trch-bm-min-hpps-128M-booti-busybox/Makefile
 include $(CONF)/lib-hpps-atf-sev/Makefile
-include $(CONF)/lib-hpps-linux-booti/Makefile
-include $(CONF)/lib-hpps-ddr-lo-128M/Makefile
