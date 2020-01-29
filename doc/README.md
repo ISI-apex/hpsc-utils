@@ -725,15 +725,20 @@ the boot of the target software finishes, then you have to manually modify the
 target code for it to wait for debugger early in the boot. One way of doing
 this is to add a busyloop on a flag variable that you then set from the
 debugger. For example, you can add the busyloop in a fairly early part of ATF
-in `ssw/hpps/arm-trusted-firmware/plat/hpsc/bl31_hpsc_setup.c` in
-`bl31_platform_setup`, like so:
+in `ssw/hpps/arm-trusted-firmware/lib/cpus/aarch64/cortex_a53.S` in
+`cortex_a53_reset_func`, like so:
 
-	volatile unsigned __debugger_attached = 0;
-	void bl31_platform_setup(void) // existing code
-	{
-		while(!__debugger_attached);
-		// ... existing code
-	}
+        .section .data
+        __debugger_attached_ptr: .long 0x0
+
+        func cortex_a53_reset_func /* existing line of code */
+
+                ldr    x0, =__debugger_attached_ptr
+        wait_for_debugger:
+                ldr     w1, [x0]
+                cbz     w1, wait_for_debugger
+
+                /* ... existing code */
 
 ### Get U-boot relocation offset
 
@@ -944,7 +949,7 @@ U-boot relocation offset](#Get-U-boot-relocation-offset) section above:
 If you setup up a busyloop in the above section, then set the flag for the
 target to exist the busyloop:
 
-    set __debugger_attached=1 
+    set *__debugger_attached_ptr=1
 
 #### Create a script with commands for loading the executables
 
