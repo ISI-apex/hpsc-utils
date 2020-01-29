@@ -721,24 +721,17 @@ unusably slow (at least on OS X client).
 ### Optionally modify the target code to wait for debugger
 
 First, if you would like to attach the debugger at some "early" point before
-the boot of the target software finishes, then you have to manually modify the
-target code for it to wait for debugger early in the boot. One way of doing
-this is to add a busyloop on a flag variable that you then set from the
-debugger. For example, you can add the busyloop in a fairly early part of ATF
-in `ssw/hpps/arm-trusted-firmware/lib/cpus/aarch64/cortex_a53.S` in
-`cortex_a53_reset_func`, like so:
+the boot of the target software finishes, then enable a wait loop that is
+very early in ATF, by enabling the `WAIT_FOR_DEBUGGER` make flag (must
+shallow-clean first, because make flags don't participate in the dependency
+tree).
 
-        .section .data
-        __debugger_attached_ptr: .long 0x0
+    $ make ssw/prof/PROFILE/bld/clean
+    $ make WAIT_FOR_DEBUGGER=1 ssw/prof/PROFILE/run/zebu
 
-        func cortex_a53_reset_func /* existing line of code */
-
-                ldr    x0, =__debugger_attached_ptr
-        wait_for_debugger:
-                ldr     w1, [x0]
-                cbz     w1, wait_for_debugger
-
-                /* ... existing code */
+This loop waits on a memory location pointed to by `__debugger_attached_ptr`
+to become non-zero. The later section in this document show how the bit can
+be set from the debugger.
 
 ### Get U-boot relocation offset
 
