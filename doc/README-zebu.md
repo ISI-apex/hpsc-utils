@@ -101,14 +101,11 @@ time -- a current limitation of infrastructure).
 
 Not all profiles are supported on Zebu, currently, the pofiles that are
 compatible with Zebu will have the configuration identified in the following
-name pattern `sys-preload-trch-bm-min-hpps-128M-*-atf-sev-ub-nodcd-booti-busybox`:
+name pattern `sys-preload-trch-bm-min-hpps-128M-*--ub-nodcd-booti-busybox`:
  * `trch-bm-min`: TRCH BM app configured for minimal feature set (relevant when
     the profile is run in Qemu)
  * `hpps-128M`: HPPS SW stack (and Qemu model) is configured for HPPS DDR of
    size 128M
- * `atf-sev`: a ***workaround*** hack is applied to ATF to execute an SEV
-   instruction soon after reset, because on Zebu emulator (not on HAPS), the
-   A53 processor executes extremely slowly until it executes an SEV instruction.
  * `ub-nodcd`: a ***workaround*** hack is applied to U-boot to not disable
     EL0/EL1 A53 Data Cache before jumping to Linux because doing so generates
     an abort exception on Zebu and on HAPS.
