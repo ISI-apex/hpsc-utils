@@ -6,8 +6,10 @@
 
 mboxtester
 mbox-multiple-core-tester
+mbox-server-tester
 shm-standalone-tester
 shm-tester
+sram-tester
 wdtester
 rtit-tester
 offchip-sram-tester

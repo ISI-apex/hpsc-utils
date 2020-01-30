@@ -8,7 +8,7 @@
 DMESG_BUF_LEN=50 # about 10x what we should need, but room for other messages
 
 # returns the first listed DMA channel
-function get_dma_channel() {
+function get_first_dma_channel() {
     local all_dma_channels=$(ls /sys/class/dma/ | tr -s " ")
     all_dma_channels_arr=($all_dma_channels)
     echo ${all_dma_channels_arr[0]}
@@ -68,21 +68,27 @@ function check_dma_failures()
 function do_dma_on_specified_channel()
 {
     local chan=$1
+
+    # ensure proper dmatest functionality by setting important parameters
+    echo 16384 > /sys/module/dmatest/parameters/test_buf_size
+    echo 1 > /sys/module/dmatest/parameters/threads_per_chan
+    echo 1 > /sys/module/dmatest/parameters/iterations
+    echo 3000 > /sys/module/dmatest/parameters/timeout
     echo "$chan" > /sys/module/dmatest/parameters/channel
     local dmesg_a=$(dmesg | tail -n $DMESG_BUF_LEN)
+
     # start the test (returns immediately)
     echo 1 > /sys/module/dmatest/parameters/run
-    # wait for test completion
-    cat /sys/module/dmatest/parameters/wait
-    local dmesg_b=$(dmesg | tail -n $DMESG_BUF_LEN)
+
     # get only new lines in dmesg - ignore lines unrelated to dmatest and those
     # that fell out of buffer range (from earlier tests)
+    local dmesg_b=$(dmesg | tail -n $DMESG_BUF_LEN)
     local dmesg_new=$(diff <(echo "$dmesg_a") <(echo "$dmesg_b") -U 0 |
                       grep "dmatest" | grep -E "^\+\[" | cut -c2-)
     if ! check_dma_failures "$(echo "$dmesg_new" | grep "summary")"; then
         echo "dmatest failed for channel: $chan" >&2
         echo "$dmesg_new" >&2
-        return 1
+        exit 2
     fi
 }
 
@@ -94,7 +100,6 @@ function interrupt_affinity_test()
 
     cpu_bitmask=(01 02 04 08 10 20 40 80)
     
-    echo cpu_num = $cpu_num
     old_interrupt_cnt=$(get_num_interrupts $irq_num $cpu_num)
     echo ${cpu_bitmask[$cpu_num]} > /proc/irq/${irq_num}/smp_affinity
     do_dma_on_specified_channel ${dma_chan}
@@ -104,22 +109,39 @@ function interrupt_affinity_test()
     # verify that only one new interrupt occurred
     if (("$num_new_interrupts" != 1)); then
 	echo "Interrupt affinity test failed for CPU ${cpu_num}" >&2
-	return 1
+	exit 3
     fi
 }
 
-dma_channel=$(get_dma_channel)
+function usage() {
+    printf "Usage: $0 [-c cpu_num] [-h]\n"
+    printf "    -c cpu_num: the HPPS core number (from 0-7) for which to test interrupt affinity (default: 0)\n"
+    printf "    -h: show this message and exit\n"
+}
+
+cpu_num=0
+dma_channel=$(get_first_dma_channel)
 dma_controller=$(get_dma_controller_for_channel ${dma_channel})
 irq_num=$(get_irq_from_dma_controller ${dma_controller})
+
+while getopts "c:h?" o; do
+    case "$o" in
+	c) cpu_num=${OPTARG};;
+	h) usage
+	   exit 0;;
+	*) echo "Unknown option"
+	   usage >&2
+	   exit 1;;
+    esac
+done
+
+printf "cpu_num=${cpu_num}\n"
 
 # save the current smp_affinity file
 orig_bitmask=$(cat /proc/irq/${irq_num}/smp_affinity)
 
-# assign the dma controller interrupt to each HPPS CPU
-for cpu_num in {0..7}
-do
-    interrupt_affinity_test ${cpu_num} ${irq_num} ${dma_channel}
-done
+# assign the dma controller interrupt to the chosen HPPS CPU
+interrupt_affinity_test ${cpu_num} ${irq_num} ${dma_channel}
 
 # restore the saved smp_affinity file
 echo ${orig_bitmask} > /proc/irq/${irq_num}/smp_affinity

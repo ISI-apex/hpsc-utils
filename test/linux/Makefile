@@ -20,6 +20,7 @@ BINS = \
 	wdtester \
 	rtit-tester \
 	offchip-sram-tester \
+	mbox-server-tester \
 
 .PHONY: $(TOPTARGETS) $(SUBDIRS)
 
@@ -34,7 +35,7 @@ libmbox/libmbox.a:
 LDFLAGS_libmbox = -Llibmbox -lmbox
 OBJS_mbox = mbox-utils.o
 
-mbox-multiple-core-tester.elf mboxtester.elf: %.elf : %.o $(OBJS_mbox) libmbox/libmbox.a
+mbox-multiple-core-tester.elf mbox-server-tester.elf mboxtester.elf: %.elf : %.o $(OBJS_mbox) libmbox/libmbox.a
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -o $@ $< $(OBJS_mbox) $(LDFLAGS) $(LDFLAGS_libmbox)
 
 %.o: %.c

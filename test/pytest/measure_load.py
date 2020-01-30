@@ -25,21 +25,21 @@ tester_remote_path = "/opt/nas-parallel-benchmarks/NPB3.3.1-OMP/bin/ep." + nas_e
 @pytest.mark.parametrize('sleep_sec', [70])
 # "0" threads in the num_threads array means that the NAS benchmark won't be run
 @pytest.mark.parametrize('num_threads', range(9))
-def test_load_with_varying_thread_counts_and_sleep_times(qemu_hpps_ser_conn_per_mdl, host, sleep_sec, num_threads):
+def test_load_with_varying_thread_counts_and_sleep_times(qemu_instance_per_mdl, host, sleep_sec, num_threads):
     if (num_threads > 0):
         # first set OMP_NUM_THREADS and OMP_PROC_BIND, then run the tester asynchronously
         p = subprocess.Popen("ssh " + host + " \"export OMP_NUM_THREADS=" + str(num_threads) +"; export OMP_PROC_BIND=TRUE; " + tester_remote_path + "\"", stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, shell=True)
         time.sleep(1)
 
         # identify the process ID of the running NAS benchmark
-        out = subprocess.run("ssh hpscqemu ps ", stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, shell=True)
+        out = subprocess.run("ssh " + host + " ps ", stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, shell=True)
         pid = re.search(r"\s+(\S+)\s+\S+\s+\S+\s+\S+\s+" + tester_remote_path, out.stdout).group(1)
 
     # sleep for the prescribed number of seconds, then print out the "uptime" output
-    out = subprocess.run("ssh hpscqemu \"sleep " + str(sleep_sec) + "; uptime\"", stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, shell=True)
+    out = subprocess.run("ssh " + host + " \"sleep " + str(sleep_sec) + "; uptime\"", stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, shell=True)
     print("\nFor " + str(num_threads) + " threads sleeping for " + str(sleep_sec) + " seconds:\n", out.stdout)
 
     if (num_threads > 0):
         # kill the current process before increasing the OMP thread count
-        out = subprocess.run("ssh hpscqemu kill -9 " + pid, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, shell=True)
+        out = subprocess.run("ssh " + host + " kill -9 " + pid, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, shell=True)
         p.terminate()

@@ -4,14 +4,8 @@
 # The kernel module must be loaded or built-in for these tests to pass.
 #
 
-DMESG_BUF_LEN=50 # about 10x what we should need, but room for other messages
-DEFAULT_TEST_BUF_SIZE=16384 # in Bytes
-DEFAULT_THREADS_PER_CHAN=1
-DEFAULT_ITERATIONS=1
-DEFAULT_TIMEOUT=3000 # in ms
-
 # returns 1 if the parameter is invalid, else returns 0
-function parameter_is_invalid {
+function parameter_is_invalid() {
     local parameter=$1
     local value=$2
 
@@ -28,7 +22,7 @@ function parameter_is_invalid {
 # checks the DMA's dmesg summary output which contains the string
 # "N failures" for some value of N.  This will exit if N > 0 or if
 # there is no summary line.  Otherwise, will return 0.
-function dma_failures_occurred {
+function dma_failures_occurred() {
     # summary contains the string "N failures" for some value N
     local summary=$1
     local last=""
@@ -48,7 +42,7 @@ function dma_failures_occurred {
     exit 5
 }
 
-function dma_test {
+function dma_test() {
     local chan=$1
 
     echo $chan > /sys/module/dmatest/parameters/channel
@@ -57,27 +51,43 @@ function dma_test {
     # start the test (returns immediately)
     echo 1 > /sys/module/dmatest/parameters/run
 
-    # wait for test completion
-    cat /sys/module/dmatest/parameters/wait
-    local dmesg_b=$(dmesg | tail -n $DMESG_BUF_LEN)
-
     # get only new lines in dmesg - ignore lines unrelated to dmatest and those
     # that fell out of buffer range (from earlier tests)
+    local dmesg_b=$(dmesg | tail -n $DMESG_BUF_LEN)
     local dmesg_new=$(diff <(echo "$dmesg_a") <(echo "$dmesg_b") -U 0 |
                       grep "dmatest" | grep -E "^\+\[" | cut -c2-)
     dma_failures_occurred "$(echo "$dmesg_new" | grep "summary")"
 }
 
-while getopts b:h:i:t:c: option
-do
-case "${option}"
-in
-b) TEST_BUF_SIZE=${OPTARG};;
-h) THREADS_PER_CHAN=${OPTARG};;
-i) ITERATIONS=${OPTARG};;
-t) TIMEOUT=${OPTARG};;
-c) CHANNEL=${OPTARG};;
-esac
+function usage() {
+    printf "Usage: $0 [-b TEST_BUF_SIZE] [-T THREADS_PER_CHAN] [-i ITERATIONS] [-t TIMEOUT] [-c CHANNEL] [-h]\n"
+    printf "    -b TEST_BUF_SIZE: size in bytes of the memcpy test buffer for running dmatest (default: 16384)\n"
+    printf "    -T THREADS_PER_CHAN: number of threads to start per channel for running dmatest (default: 1)\n"
+    printf "    -i ITERATIONS: iterations before stopping dmatest (default: 1)\n"
+    printf "    -t TIMEOUT: transfer timeout in msec for dmatest (default: 3000)\n"
+    printf "    -c CHANNEL: bus ID of the channel for running dmatest (default: all available)\n"
+    printf "    -h: show this message and exit\n"
+}
+
+DMESG_BUF_LEN=50 # about 10x what we should need, but room for other messages
+DEFAULT_TEST_BUF_SIZE=16384 # in Bytes
+DEFAULT_THREADS_PER_CHAN=1
+DEFAULT_ITERATIONS=1
+DEFAULT_TIMEOUT=3000 # in ms
+
+while getopts "b:T:i:t:c:h?" o; do
+    case "$o" in
+        b) TEST_BUF_SIZE=${OPTARG};;
+        T) THREADS_PER_CHAN=${OPTARG};;
+        i) ITERATIONS=${OPTARG};;
+        t) TIMEOUT=${OPTARG};;
+        c) CHANNEL=${OPTARG};;
+        h) usage
+           exit 0;;
+        *) echo "Unknown option"
+           usage >&2
+           exit 1;;
+    esac
 done
 
 # set default value for TEST_BUF_SIZE
