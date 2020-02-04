@@ -610,7 +610,7 @@ to debug different profiles, may require rebuilding Qemu. To rebuild Qemu
 for a cluster at index `INDEX`:
 
     $ make sdk/qemu/clean/all
-    $ make QEMU_GDB_TARGET_CLUSTER=INDEX sdk/qemu/all
+    $ make QEMU_GDB_TARGET_CLUSTER=INDEX sdk/qemu
 
 To get the cluster index, count in the following list starting at 0 and
 skipping any clusters that your profile does not enable:
