@@ -194,7 +194,9 @@ endef
 $(PROF_BLD)/%.dts:
 	$(call concat,$@,$^,/*,*/)
 
-$(PROF_BLD)/%.sh $(PROF_BLD)/%.config.mk $(PROF_BLD)/%.conf $(PROF_BLD)/%.miniconf:
+$(PROF_BLD)/%.sh $(PROF_BLD)/%.config.mk \
+$(PROF_BLD)/%.conf $(PROF_BLD)/%.miniconf \
+$(PROF_BLD)/%.paths:
 	$(call concat,$@,$^,#,)
 
 $(PROF_BLD)/%.ini:
@@ -928,9 +930,9 @@ $(B_hpps-busybox)/busybox.fr.dir: $(or $(call mod-prereq,hpps-busybox),$(S_hpps-
 
 MODULES += hpps-linux-tests
 L_hpps-linux-tests := $(HPSC_UTILS)/test/linux
-B_hpps-linux-tests := $(PROF_BLD)/hpps/test/linux
+B_hpps-linux-tests := $(PROF_BLD)/hpps/linux-tests
 S_hpps-linux-tests := $(call src,hpps-linux-tests)
-KEEP_DIRS += $(PROF_BLD)/hpps/test/linux
+KEEP_DIRS += $(PROF_BLD)/hpps/linux-tests
 
 HPPS_LINUX_TESTS_ARGS = CROSS_COMPILE=$(CROSS_A53_LINUX) CC=gcc $(MAKE_ARGS)
 
@@ -943,12 +945,12 @@ $(B_hpps-linux-tests)/clean:
 # Pick some artifact that indicates completed build (relevant only for shallow build)
 $(S_hpps-linux-tests)/mboxtester: $(call mod-prereq,hpps-linux-tests) ;
 
-$(B_hpps-linux-tests)/tests.fr.dir: $(if $(DEEP),$(B_hpps-linux-tests),\
+$(B_hpps-linux-tests)/install.fr.dir: $(if $(DEEP),$(B_hpps-linux-tests),\
 												 $(S_hpps-linux-tests)/mboxtester) \
 								    | $(B_hpps-linux-tests)/
 	fakeroot -s $@.fr \
 		$(MAKE) -C $(S_hpps-linux-tests) $(HPPS_LINUX_TESTS_ARGS) \
-			DEST="$(abspath $@)/usr/bin/tests" install
+			DEST="$(abspath $@)/usr/bin" install
 	touch $@
 
 MODULES += hpps-yocto
