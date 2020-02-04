@@ -21,7 +21,9 @@ phases:
       - cd $CODEBUILD_SRC_DIR/hpsc-bsp/ssw/tests
       - export TZ=America/New_York date
       - now=$(date +"%Y_%m_%d_%H_%M_%S")
-      - pytest -sv --host hpscqemu --durations=0 test_dma.py test_interrupt_affinity.py test_mbox.py test_parallel_scaling.py test_shm.py test_timer_interrupt.py 2>&1 | tee results_${now}.txt
+      - pytest -sv --host hpscqemu --durations=0 test_dma.py test_interrupt_affinity.py test_mbox.py test_parallel_scaling.py test_shm.py test_timer_interrupt.py 2>&1 | tee results_${now}.txt; rc=${PIPESTATUS[0]}
+      - echo "pytest return code=$rc"
+      - if [ "$rc" -ne 0 ]; then false; fi
 
 #  post_build:
 #    commands:
