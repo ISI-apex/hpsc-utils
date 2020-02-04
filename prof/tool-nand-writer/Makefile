@@ -10,7 +10,7 @@ include $(CONF)/lib-trch-bm-hpps/Makefile
 include $(CONF)/lib-hpps-busybox/Makefile
 include $(CONF)/lib-hpps-ddr-high/Makefile
 include $(CONF)/lib-hpps-linux-gpmem/Makefile
-include $(CONF)/lib-hpps-smc/Makefile
+include $(CONF)/lib-hpps-smc-nand/Makefile
 
 PROF_CONF:=$(CONF)/$(call pop-prof)
 

@@ -2,7 +2,8 @@
 # enabled).
 
 $(call push-prof)
-include $(CONF)/lib-lsio-smc/Makefile
+include $(CONF)/lib-lsio-smc-sram-nvram/Makefile
+include $(CONF)/lib-lsio-smc-nand/Makefile
 PROF_CONF:=$(CONF)/$(call pop-prof)
 
 # The BM app default config is tracked in the TRCH BM repo, what we need to do

@@ -3,7 +3,7 @@
 
 $(call push-prof)
 
-include $(CONF)/lib-lsio-smc/Makefile
+include $(CONF)/lib-lsio-smc-sram-nvram/Makefile
 include $(CONF)/lib-bl0/Makefile
 include $(CONF)/lib-trch-bm/Makefile
 

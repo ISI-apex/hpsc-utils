@@ -1,0 +1,9 @@
+mount -t jffs2 $MTD_DEV_NAND /mnt/nand
+
+# do a little test
+echo testdata > /mnt/nand/testfile
+umount /mnt/nand
+mount -t jffs2 $MTD_DEV_NAND /mnt/nand
+cat /mnt/nand/testfile
+rm /mnt/nand/testfile
+# leave mounted

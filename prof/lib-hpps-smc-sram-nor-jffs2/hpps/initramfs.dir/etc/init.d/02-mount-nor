@@ -1,0 +1,9 @@
+mount -t jffs2 $MTD_DEV_NOR /mnt/nor
+
+# do a little test
+echo testdata > /mnt/nor/testfile
+umount /mnt/nor
+mount -t jffs2 $MTD_DEV_NOR /mnt/nor
+cat /mnt/nor/testfile
+rm /mnt/nor/testfile
+# leave mounted
