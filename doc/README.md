@@ -25,6 +25,25 @@ without root acccess, how to run in other target HW emulators, how to boot into
 other target configuration profiles (e.g., boot from non-volatile memory, boot
 Yocto Linux, etc), and other important information.
 
+Setup environment
+=================
+
+You may want or need to do some of the following one-time setup.
+
+The Makefiles for HPSC stack require the Bash shell. Check the shell
+on your server with `ls -l /bin/sh` and if it is not `*/bash`, then
+run the following to point make to bash (also, make sure bash shell
+is installed on your system; if you don't have root, you can probably
+build it from source and use the absolute path to your build instead of
+`/bin/bash` in the command below):
+
+    $ echo 'alias make="make SHELL=/bin/bash"' >> .hpscrc
+
+For users of the `vim` editor, to apply syntax highlighting to some of
+the custom config files, add to your `~/.vimrc`:
+
+    au BufRead,BufNewFile *.mem.map setfiletype sh
+
 Load the HPSC environment into the shell
 ========================================
 
@@ -45,14 +64,6 @@ that no environment files been loaded):
 Do not configure your shell to load this environment automatically (e.g. via
 `~/.bashrc`) because it will pollute your environment potentially breaking
 other work not related to HPSC.
-
-Configure miscellaneous settings
---------------------------------
-
-For users of the `vim` editor, to apply syntax highlighting to some of
-the custom config files, add to your `~/.vimrc`:
-
-    au BufRead,BufNewFile *.mem.map setfiletype sh
 
 Build the HPSC SDK
 ==================

@@ -2,6 +2,11 @@
 SDK=sdk
 SSW=ssw
 
+ifeq ($(filter %/bash,$(realpath $(SHELL))),)
+$(error Unsupported shell (not Bash): $(SHELL) ($(realpath $(SHELL))). \
+    Try: echo 'alias make="make SHELL=/bin/bash"' >> .hpscrc && source env.sh)
+endif
+
 # We can't create a dependency tree here, because there are a couple of
 # top level options for SDK:
 #  * installed via installer: build only system software, then

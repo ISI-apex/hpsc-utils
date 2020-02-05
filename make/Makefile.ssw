@@ -58,6 +58,10 @@ CROSS_M4=arm-none-eabi-
 COPY=cp -l --remove-destination
 RSYNC=rsync
 
+ifeq ($(filter %/bash,$(realpath $(SHELL))),)
+$(error Unsupported shell (not Bash): $(SHELL) ($(realpath $(SHELL))))
+endif
+
 # Directory that holds all output
 PROFDIR := prof
 
