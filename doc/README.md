@@ -112,16 +112,16 @@ visudo` and uncomment the following line:
     %wheel  ALL=(ALL)       NOPASSWD: ALL
 
 To install the necessary packages into your host system, run the following
-target as root (`#` indicates a prompt with root privileges, which usually
-means to run the command via `sudo`), replacing `DISTRO` with the identifier
-for your distribution from above:
+target replacing `DISTRO` with the identifier for your distribution from above
+(run as normal user, not via sudo, sub-commands will be invoked via sudo
+automatically):
 
-    # make sdk/deps/DISTRO
+    $ make sdk/deps/DISTRO
 
 In case you need to repeat this step, clean it with the following before
 repeating the above:
 
-    # make sdk/deps/clean
+    $ make sdk/deps/clean
 
 ### Option B: dependencies from a sysroot built from source
 
