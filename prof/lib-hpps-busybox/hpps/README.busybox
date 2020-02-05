@@ -22,8 +22,8 @@ miniconfig tool:
     miniconfig.sh profile.config
     mv mini.config profile_miniconfig
 
-The miniconfig.sh script is shipped in `host/` and its upstream
-location is at [1].
+The miniconfig.sh script is shipped in the HPSC SDK and its upstream location
+is at [1].
 
 ## Known issues
 
