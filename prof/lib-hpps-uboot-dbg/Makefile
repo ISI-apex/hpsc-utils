@@ -5,4 +5,4 @@ $(call push-prof)
 # includes
 PROF_CONF:=$(CONF)/$(call pop-prof)
 
-$(PROF_BLD)/hpps/u-boot: private MAKE_ARGS=CFLAGS_board_f.o+=-DDEBUG
+$(PROF_BLD)/hpps/u-boot: private MAKE_ARGS+=CFLAGS_board_f.o+=-DDEBUG
