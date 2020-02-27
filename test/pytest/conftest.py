@@ -44,9 +44,8 @@ def qemu_instance():
     p.stdout.close()
     
     # Connect to the serial ports, then issue a continue command to QEMU
-    # TEMPORARILY NOT LISTENING ON TRCH SERIAL PORT TO AVOID ISSUES ON AWS CODEBUILD
-#    trch_ser_conn = serial.Serial(port=trch_ser_port, baudrate=ser_baudrate)
-#    trch_ser_fd = fdspawn(trch_ser_conn, timeout=ser_fd_timeout)
+    trch_ser_conn = serial.Serial(port=trch_ser_port, baudrate=ser_baudrate)
+    trch_ser_fd = fdspawn(trch_ser_conn, timeout=ser_fd_timeout)
 
     rtps_ser_conn = serial.Serial(port=rtps_ser_port, baudrate=ser_baudrate)
     rtps_ser_fd = fdspawn(rtps_ser_conn, timeout=ser_fd_timeout)
@@ -66,13 +65,13 @@ def qemu_instance():
 
     # Create a ser_fd dictionary object with each subsystem's serial file descriptor
     ser_fd = dict();
-#    ser_fd['serial0'] = trch_ser_fd
+    ser_fd['serial0'] = trch_ser_fd
     ser_fd['serial1'] = rtps_ser_fd
     ser_fd['serial2'] = hpps_ser_fd
 
     yield ser_fd
     # This is the teardown
-#    ser_fd['serial0'].close()
+    ser_fd['serial0'].close()
     ser_fd['serial1'].close()
     ser_fd['serial2'].close()
     p.terminate()
