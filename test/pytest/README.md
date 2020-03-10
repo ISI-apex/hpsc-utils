@@ -2,7 +2,12 @@ HPSC Automated Tests
 ====================
 
 This directory contains PyTest test scripts for testing various HPSC
-functionality.  Before running the scripts, the user should verify the
+functionality.
+
+Prerequisites
+-------------
+
+Before running the scripts, the user should verify the
 following:
 * Python3 should be installed locally, along with the following packages:
 `pyserial`, `pexpect`, `pytest`, `pytest-timeout`.  On a CentOS 7 machine,
@@ -33,18 +38,31 @@ Host hpscqemu
      UserKnownHostsFile=/dev/null
 ```
 
-Once the prerequisites are met, run the full test suite as follows:
+Running the Tests
+-----------------
 
-    pytest -v --host [hostname] --durations=0
+Once the prerequisites are met, individual tests can be run as follows:
+
+    pytest -sv --host [hostname] --durations=0 [test_file1] [test_file2] ... [test_fileN]
+
+e.g., for a host named hpscqemu:
+
+    pytest -sv --host hpscqemu --durations=0 test_dma.py test_hotplug.py test_interrupt_affinity.py test_mbox.py test_mbox_multi_system.py test_mmu.py test_parallel_scaling.py test_shm.py test_timer_interrupt.py
+
+In addition, the full test suite can be run as follows:
+
+    pytest -sv --host [hostname] --durations=0
 
 e.g.,
 
-    pytest -v --host hpscqemu --durations=0
+    pytest -sv --host hpscqemu --durations=0
 
-In order to only run the tests in specific files:
+However, three of the tests (test_nand.py, test_sram.py, and test_wdt.py) will fail with
+the default boot configuration since they require a HPPS reboot via a watchdog timeout.  
+In order for these three tests to succeed, the following needs to be specified in syscfg.ini:
 
-    pytest -v --host [hostname] --durations=0 [test_file1] [test_file2] ... [test_fileN]
+    bin_loc = TRCH_SMC_SRAM
+    rootfs_loc = HPPS_SMC_NAND
 
-e.g.,
-
-    pytest -v --host hpscqemu --durations=0 test_dma.py test_mbox.py test_parallel_scaling.py
+Finally, the buildspec file (buildspec.yml) is in this directory and can be pointed to by
+AWS CodeBuild in order to execute tests on that service.
