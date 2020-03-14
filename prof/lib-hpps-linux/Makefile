@@ -23,6 +23,13 @@ $(PROF_BLD)/hpps/u-boot.env: $(PROF_CONF)/hpps/u-boot.env
 $(PROF_BLD)/hpps/u-boot.dts: $$(S_hpps-uboot)/arch/arm/dts/hpsc-hpps.dts
 $(PROF_BLD)/hpps/linux.dts: $$(S_hpps-linux)/arch/arm64/boot/dts/hpsc/hpsc.dts
 
+# Nodes in device tree are enabled by default, so disable to get a minimal base
+$(PROF_BLD)/hpps/linux.cpp.dts: private CFLAGS+=\
+	-DCONFIG_DMA=0 -DCONFIG_ETH=0 -DCONFIG_MAILBOXES=0 \
+	-DCONFIG_PMU=0 -DCONFIG_SMC=0 -DCONFIG_SMMU=0 \
+	-DCONFIG_RTI_TIMERS=0 -DCONFIG_SHMEM=0 -DCONFIG_WDTS=0 \
+	-DCONFIG_HPSC_MSG_TP_MBOX=0 -DCONFIG_HPSC_MSG_TP_SHMEM=0 \
+
 $(PROF_BLD)/qemu/env.sh: $(PROF_CONF)/qemu/env.sh
 $(PROF_BLD)/preload-boot.preload.mem.map: $(PROF_CONF)/preload-boot.preload.mem.map
 
