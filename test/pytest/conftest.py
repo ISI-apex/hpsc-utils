@@ -28,10 +28,14 @@ def qemu_instance():
     f.write("SERIAL_PORT_NAMES[serial0]=\"\"\nSERIAL_PORT_NAMES[serial1]=\"\"\nSERIAL_PORT_NAMES[serial2]=\"\"\n")
     f.close()
 
+    flog = open("test.log", "wb")
+
     # Now start QEMU without any screen sessions
     # Note that the Popen call below combines stdout and stderr together
     p = subprocess.Popen(["./run-qemu.sh", "-e", "./qemu-env.sh", "-e", "./qemu-env-override.sh", "--", "-S"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
     for stdout_line in iter(p.stdout.readline, ""):
+        flog.write(stdout_line.encode("utf8"))
+        flog.flush()
         if ("QMP_PORT = " in stdout_line):
             qmp_port = re.search(r"QMP_PORT = (\d+)", stdout_line).group(1)
         elif ("(label serial0)" in stdout_line):
@@ -45,13 +49,13 @@ def qemu_instance():
     
     # Connect to the serial ports, then issue a continue command to QEMU
     trch_ser_conn = serial.Serial(port=trch_ser_port, baudrate=ser_baudrate)
-    trch_ser_fd = fdspawn(trch_ser_conn, timeout=ser_fd_timeout)
+    trch_ser_fd = fdspawn(trch_ser_conn, timeout=ser_fd_timeout, logfile=flog)
 
     rtps_ser_conn = serial.Serial(port=rtps_ser_port, baudrate=ser_baudrate)
-    rtps_ser_fd = fdspawn(rtps_ser_conn, timeout=ser_fd_timeout)
+    rtps_ser_fd = fdspawn(rtps_ser_conn, timeout=ser_fd_timeout, logfile=flog)
 
     hpps_ser_conn = serial.Serial(port=hpps_ser_port, baudrate=ser_baudrate)
-    hpps_ser_fd = fdspawn(hpps_ser_conn, timeout=ser_fd_timeout)
+    hpps_ser_fd = fdspawn(hpps_ser_conn, timeout=ser_fd_timeout, logfile=flog)
 
     subprocess.run(["python3", "sdk/tools/qmp-cmd", "localhost", qmp_port, "cont"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
 
@@ -72,6 +76,7 @@ def qemu_instance():
     yield ser_fd
     # This is the teardown
     ser_fd['serial0'].close()
+    flog.close()
     ser_fd['serial1'].close()
     ser_fd['serial2'].close()
     p.terminate()
