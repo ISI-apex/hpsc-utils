@@ -32,7 +32,7 @@ def qemu_instance():
 
     # Now start QEMU without any screen sessions
     # Note that the Popen call below combines stdout and stderr together
-    p = subprocess.Popen(["./run-qemu.sh", "-e", "./qemu-env.sh", "-e", "./qemu-env-override.sh", "--", "-S"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+    p = subprocess.Popen(["./run-qemu.sh", "-e", "./qemu-env.sh", "-e", "./qemu-env-override.sh", "--", "-S", "-q"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
     for stdout_line in iter(p.stdout.readline, ""):
         flog.write(stdout_line.encode("utf8"))
         flog.flush()
