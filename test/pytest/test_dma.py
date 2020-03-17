@@ -9,7 +9,7 @@ def run_tester_on_host(hostname, tester_num, tester_pre_args, tester_post_args):
     return out
 
 # Since this first test will boot QEMU, it is given more than the default time
-@pytest.mark.timeout(200)
+@pytest.mark.timeout(400)
 @pytest.mark.parametrize('buf_size', [8192, 16384, -1])
 def test_test_buffer_size(qemu_instance_per_mdl, host, buf_size):
     out = run_tester_on_host(host, 0, [], ['-b', str(buf_size)])

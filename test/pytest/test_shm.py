@@ -10,7 +10,7 @@ def run_tester_on_host(hostname, tester_num, tester_pre_args, tester_post_args):
     return out
 
 # Since this first test will boot QEMU, it is given more than the default time
-@pytest.mark.timeout(200)
+@pytest.mark.timeout(400)
 def test_write_then_read_on_each_shm_region(qemu_instance_per_mdl, host):
     shm_dir = '/dev/hpsc_shmem/'
     num_write_bytes = 32

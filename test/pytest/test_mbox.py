@@ -10,7 +10,7 @@ def run_tester_on_host(hostname, tester_num, tester_pre_args, tester_post_args):
     
 # Verify that mboxtester works with the process pinned separately to each HPPS core.
 # Since this first test will boot QEMU, it is given more than the default time
-@pytest.mark.timeout(200)
+@pytest.mark.timeout(400)
 @pytest.mark.parametrize('core_num', range(8))
 @pytest.mark.parametrize('notif', ['none', 'select', 'poll', 'epoll'])
 def test_hpps_to_trch_for_each_notification_and_core(qemu_instance_per_mdl, host, core_num, notif):

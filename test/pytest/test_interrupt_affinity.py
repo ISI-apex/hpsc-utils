@@ -9,7 +9,7 @@ def run_tester_on_host(hostname, tester_num, tester_pre_args, tester_post_args):
     return out
 
 # Since this first test will boot QEMU, it is given more than the default time
-@pytest.mark.timeout(200)
+@pytest.mark.timeout(400)
 @pytest.mark.parametrize('core_num', range(8))
 def test_interrupt_affinity_on_each_core(qemu_instance_per_mdl, host, core_num):
     out = run_tester_on_host(host, 0, [], ['-c', str(core_num)])
