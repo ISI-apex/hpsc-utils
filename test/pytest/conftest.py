@@ -25,16 +25,12 @@ def qemu_instance():
     # Change to the hpsc-bsp directory
     os.chdir(str(os.environ['CODEBUILD_SRC_DIR']) + "/hpsc-bsp")
 
-    # Create a file with unspecified port names so screen sessions to serial ports are disabled
-    f = open("./qemu-env-override.sh", "w")
-    f.write("SERIAL_PORT_NAMES[serial0]=\"\"\nSERIAL_PORT_NAMES[serial1]=\"\"\nSERIAL_PORT_NAMES[serial2]=\"\"\n")
-    f.close()
 
     flog = open("test.log", "wb")
 
     # Now start QEMU without any screen sessions
     # Note that the Popen call below combines stdout and stderr together
-    p = subprocess.Popen(["./run-qemu.sh", "-e", "./qemu-env.sh", "-e", "./qemu-env-override.sh", "--", "-S", "-q"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+    p = subprocess.Popen(["./run-qemu.sh", "-e", "./qemu-env.sh", "--", "-S", "-q", "-D"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
     for stdout_line in iter(p.stdout.readline, ""):
         flog.write(stdout_line.encode("utf8"))
         flog.flush()
