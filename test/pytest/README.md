@@ -45,28 +45,30 @@ Add to SDK tools to Python module lookup path:
 
     export PYTHONPATH="$CODEBUILD_SRC_DIR/sdk/tools:$PYTHONPATH"
 
-Once the prerequisites are met, individual tests can be run as follows:
+Once the prerequisites are met,
 
-    pytest -sv --host [hostname] --durations=0 [test_file1] [test_file2] ... [test_fileN]
-
-e.g., for a host named hpscqemu:
-
-    pytest -sv --host hpscqemu --durations=0 test_dma.py test_hotplug.py test_interrupt_affinity.py test_mbox.py test_mbox_multi_system.py test_mmu.py test_parallel_scaling.py test_shm.py test_timer_interrupt.py
-
-In addition, the full test suite can be run as follows:
+The full test suite can be run as follows:
 
     pytest -sv --host [hostname] --durations=0
 
-e.g.,
+Individual tests can be run as follows:
 
-    pytest -sv --host hpscqemu --durations=0
+    pytest -sv --host [hostname] --durations=0 -k [filter_pattern]
 
-However, three of the tests (test_nand.py, test_sram.py, and test_wdt.py) will fail with
-the default boot configuration since they require a HPPS reboot via a watchdog timeout.  
-In order for these three tests to succeed, the following needs to be specified in syscfg.ini:
+where `[filter_pattern]` can be a substring of the module file, name of the
+class (a group of tests) or of the test function itself, and multiple can be
+joined by logical operations in Python language (e.g. `or`, `not`).
 
-    bin_loc = TRCH_SMC_SRAM
-    rootfs_loc = HPPS_SMC_NAND
+E.g., to run DMA tests given that Qemu HPPS Linux host is configured under
+`hpsc-hpps-qemu` (in `~/.ssh/config`):
+
+    pytest -sv --host hpsc-hpps-qemu --durations=0 -k TestDMA
+
+Three of the test group (`TestSRAM` and `TestWDT` classes, and `test_nand.py`)
+require a HPPS reboot via a watchdog timeout. These tests will fail in boot
+configuration profiles named `sys-preload-*` where binaries are preloaded into
+memory by the emulator (as opposed by by TRCH software). Run these tests
+against profiles named `sys-nvmem-*`.
 
 Finally, the buildspec file (buildspec.yml) is in this directory and can be pointed to by
 AWS CodeBuild in order to execute tests on that service.
