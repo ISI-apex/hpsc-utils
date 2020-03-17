@@ -5,6 +5,8 @@ import os
 import re
 from pexpect.fdpexpect import fdspawn
 
+from qmp import QMP
+
 # Make sure that the CODEBUILD_SRC_DIR env var is set.  This is the directory
 # where the hpsc-bsp directory is located.  On AWS CodeBuild, this is done
 # automatically.  In any other environment, it needs to be set.
@@ -38,26 +40,34 @@ def qemu_instance():
         flog.flush()
         if ("QMP_PORT = " in stdout_line):
             qmp_port = re.search(r"QMP_PORT = (\d+)", stdout_line).group(1)
-        elif ("(label serial0)" in stdout_line):
-            trch_ser_port = re.search(r"char device redirected to (\S+)", stdout_line).group(1)
-        elif ("(label serial1)" in stdout_line):
-            rtps_ser_port = re.search(r"char device redirected to (\S+)", stdout_line).group(1)
-        elif ("(label serial2)" in stdout_line):
-            hpps_ser_port = re.search(r"char device redirected to (\S+)", stdout_line).group(1)
             break
     p.stdout.close()
+
+    qmp = QMP('localhost', qmp_port, timeout=10)
+
+    reply = qmp.command("query-chardev")
+    cdevs = reply["return"]
+    pty_devs = {}
+    for cdev in cdevs:
+        devname = cdev[u"filename"]
+        if devname.startswith('pty:'):
+            pty_devs[cdev[u"label"]] = devname.split(':')[1]
     
+    # Association defined by order of UARTs in Qemu machine model (device tree)
+    trch_ser_port, rtps_ser_port, hpps_ser_port = "serial0", "serial1", "serial2"
+
     # Connect to the serial ports, then issue a continue command to QEMU
-    trch_ser_conn = serial.Serial(port=trch_ser_port, baudrate=ser_baudrate)
+    trch_ser_conn = serial.Serial(port=pty_devs[trch_ser_port], baudrate=ser_baudrate)
     trch_ser_fd = fdspawn(trch_ser_conn, timeout=ser_fd_timeout, logfile=flog)
 
-    rtps_ser_conn = serial.Serial(port=rtps_ser_port, baudrate=ser_baudrate)
+    rtps_ser_conn = serial.Serial(port=pty_devs[rtps_ser_port], baudrate=ser_baudrate)
     rtps_ser_fd = fdspawn(rtps_ser_conn, timeout=ser_fd_timeout, logfile=flog)
 
-    hpps_ser_conn = serial.Serial(port=hpps_ser_port, baudrate=ser_baudrate)
+    hpps_ser_conn = serial.Serial(port=pty_devs[hpps_ser_port], baudrate=ser_baudrate)
     hpps_ser_fd = fdspawn(hpps_ser_conn, timeout=ser_fd_timeout, logfile=flog)
 
-    subprocess.run(["python3", "sdk/tools/qmp-cmd", "localhost", qmp_port, "cont"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+    qmp.command("cont")
+
 
     # Check for the RTEMS shell prompt on RTPS
     rtps_ser_fd.expect('SHLL \[/\] # ')

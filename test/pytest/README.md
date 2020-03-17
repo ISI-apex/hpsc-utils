@@ -41,6 +41,10 @@ Host hpscqemu
 Running the Tests
 -----------------
 
+Add to SDK tools to Python module lookup path:
+
+    export PYTHONPATH="$CODEBUILD_SRC_DIR/sdk/tools:$PYTHONPATH"
+
 Once the prerequisites are met, individual tests can be run as follows:
 
     pytest -sv --host [hostname] --durations=0 [test_file1] [test_file2] ... [test_fileN]
