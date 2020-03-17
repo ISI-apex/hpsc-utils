@@ -3,13 +3,15 @@ import subprocess
 import pytest
 import os
 import re
+import pexpect
 from pexpect.fdpexpect import fdspawn
 
 from qmp import QMP
 
-# Make sure that the CODEBUILD_SRC_DIR env var is set.  This is the directory
-# where the hpsc-bsp directory is located.  On AWS CodeBuild, this is done
-# automatically.  In any other environment, it needs to be set.
+# If not specifying --run-dir, then make sure that the CODEBUILD_SRC_DIR env
+# var is set.  This is the directory where the hpsc-bsp directory is located.
+# On AWS CodeBuild, this is done automatically.  In any other environment, it
+# needs to be set.
 
 def pytest_configure():
     # This string will be evaluated whenever a call to subprocess.run fails
@@ -21,23 +23,24 @@ def pytest_configure():
 def qemu_instance():
     ser_baudrate = 115200
     ser_fd_timeout = 1000
+    qemu_stdout_timeout = 1000
 
-    # Change to the hpsc-bsp directory
-    os.chdir(str(os.environ['CODEBUILD_SRC_DIR']) + "/hpsc-bsp")
+    qemu_cmd = config.getoption('qemu_cmd')
+    run_dir = config.getoption('run_dir')
+    if run_dir is None:
+        run_dir = os.path.join(os.environ['CODEBUILD_SRC_DIR'], "hpsc-bsp")
 
 
     flog = open("test.log", "wb")
+    flog_qemu = open(os.path.join(run_dir, "test-qemu.log"), "wb")
 
     # Now start QEMU without any screen sessions
     # Note that the Popen call below combines stdout and stderr together
-    p = subprocess.Popen(["./run-qemu.sh", "-e", "./qemu-env.sh", "--", "-S", "-q", "-D"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
-    for stdout_line in iter(p.stdout.readline, ""):
-        flog.write(stdout_line.encode("utf8"))
-        flog.flush()
-        if ("QMP_PORT = " in stdout_line):
-            qmp_port = re.search(r"QMP_PORT = (\d+)", stdout_line).group(1)
-            break
-    p.stdout.close()
+    qmp_port = None
+    qemu = pexpect.spawn(qemu_cmd, cwd=run_dir, timeout=qemu_stdout_timeout,
+            logfile=open(os.path.join(run_dir, "test-qemu.log"), "wb"))
+    qemu.expect('QMP_PORT = (\d+)')
+    qmp_port = int(qemu.match.group(1))
 
     qmp = QMP('localhost', qmp_port, timeout=10)
 
@@ -85,7 +88,7 @@ def qemu_instance():
     flog.close()
     ser_fd['serial1'].close()
     ser_fd['serial2'].close()
-    p.terminate()
+    qemu.terminate()
 
 @pytest.fixture(scope="module")
 def qemu_instance_per_mdl():
@@ -97,6 +100,9 @@ def qemu_instance_per_fcn():
 
 def pytest_addoption(parser):
     parser.addoption("--host", action="store", help="remote hostname")
+    parser.addoption("--run-dir", action="store", help="directory where to invoke Qemu")
+    parser.addoption("--qemu-cmd", action="store", help="command to use to invoke Qemu",
+            default="./run-qemu.sh -e ./qemu-env.sh -- -S -D")
 
 def pytest_generate_tests(metafunc):
     # this is called for every test
