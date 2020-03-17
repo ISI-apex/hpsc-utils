@@ -35,6 +35,7 @@ def test_invalid_inbound_mailbox_for_each_core(qemu_instance_per_mdl, host, core
 
 # Verify that mboxtester fails with the correct exit code when a timeout
 # occurs with the process pinned separately to each HPPS core
+@pytest.mark.timeout(200)
 @pytest.mark.parametrize('core_num', range(8))
 def test_early_timeout_for_each_core(qemu_instance_per_mdl, host, core_num):
     out = run_tester_on_host(host, 0, [], ['-c', str(core_num), '-t', '0'])
