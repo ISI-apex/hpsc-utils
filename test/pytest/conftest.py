@@ -31,7 +31,6 @@ def qemu_instance():
         run_dir = os.path.join(os.environ['CODEBUILD_SRC_DIR'], "hpsc-bsp")
 
 
-    flog = open("test.log", "wb")
     flog_qemu = open(os.path.join(run_dir, "test-qemu.log"), "wb")
 
     # Now start QEMU without any screen sessions
@@ -57,13 +56,16 @@ def qemu_instance():
 
     # Connect to the serial ports, then issue a continue command to QEMU
     trch_ser_conn = serial.Serial(port=pty_devs[trch_ser_port], baudrate=ser_baudrate)
-    trch_ser_fd = fdspawn(trch_ser_conn, timeout=ser_fd_timeout, logfile=flog)
+    trch_ser_fd = fdspawn(trch_ser_conn, timeout=ser_fd_timeout,
+            logfile=open(os.path.join(run_dir, "test-trch.log"), "wb"))
 
     rtps_ser_conn = serial.Serial(port=pty_devs[rtps_ser_port], baudrate=ser_baudrate)
-    rtps_ser_fd = fdspawn(rtps_ser_conn, timeout=ser_fd_timeout, logfile=flog)
+    rtps_ser_fd = fdspawn(rtps_ser_conn, timeout=ser_fd_timeout,
+            logfile=open(os.path.join(run_dir, "test-rtps.log"), "wb"))
 
     hpps_ser_conn = serial.Serial(port=pty_devs[hpps_ser_port], baudrate=ser_baudrate)
-    hpps_ser_fd = fdspawn(hpps_ser_conn, timeout=ser_fd_timeout, logfile=flog)
+    hpps_ser_fd = fdspawn(hpps_ser_conn, timeout=ser_fd_timeout,
+            logfile=open(os.path.join(run_dir, "test-hpps.log"), "wb"))
 
     qmp.command("cont")
 
@@ -85,7 +87,6 @@ def qemu_instance():
     yield ser_fd
     # This is the teardown
     ser_fd['serial0'].close()
-    flog.close()
     ser_fd['serial1'].close()
     ser_fd['serial2'].close()
     qemu.terminate()
