@@ -69,6 +69,7 @@ def qemu_instance():
 
     qmp.command("cont")
 
+    trch_ser_fd.expect('\[\d+\] Waiting for interrupt...')
 
     # Check for the RTEMS shell prompt on RTPS
     rtps_ser_fd.expect('SHLL \[/\] # ')
