@@ -14,17 +14,17 @@ def run_tester_on_host(hostname, cmd):
 # watchdog timeout), then check that the SRAM array is the same.
 # Since this test will boot QEMU, then reboot QEMU, it is given more time.
 @pytest.mark.timeout(800)
-def test_non_volatility(qemu_instance_per_fcn, host):
+def test_non_volatility(hpps_serial_per_fnc, host):
     # increment the first 100 elements of the SRAM array by 2, then reboot HPPS
     out = run_tester_on_host(host, "/opt/hpsc-utils/sram-tester -s 100 -i 2")
     assert out.returncode == 0, eval(pytest.run_fail_str)
     sram_before_reboot = re.search(r'Latest SRAM contents:(.+)', out.stdout, flags=re.DOTALL).group(1)
 
     # currently rebooting HPPS requires having the watchdog time out
-    qemu_instance_per_fcn['serial2'].sendline("taskset -c 0 /opt/hpsc-utils/wdtester /dev/watchdog0 0")
-    assert(qemu_instance_per_fcn['serial2'].expect("hpsc-chiplet login: ") == 0)
-    qemu_instance_per_fcn['serial2'].sendline('root')
-    assert(qemu_instance_per_fcn['serial2'].expect('root@hpsc-chiplet:~# ') == 0)
+    hpps_serial_per_fnc.sendline("taskset -c 0 /opt/hpsc-utils/wdtester /dev/watchdog0 0")
+    assert(hpps_serial_per_fnc.expect("hpsc-chiplet login: ") == 0)
+    hpps_serial_per_fnc.sendline('root')
+    assert(hpps_serial_per_fnc.expect('root@hpsc-chiplet:~# ') == 0)
 
     # after the reboot, read the SRAM contents to verify that they haven't changed
     out = run_tester_on_host(host, "/opt/hpsc-utils/sram-tester -s 100")

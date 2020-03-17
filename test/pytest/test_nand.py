@@ -11,7 +11,7 @@ def run_tester_on_host(hostname, cmd):
 # rebooting HPPS.
 # Since this test will boot QEMU, then reboot QEMU, it is given more time.
 @pytest.mark.timeout(800)
-def test_non_volatility(qemu_instance_per_fcn, host):
+def test_non_volatility(hpps_serial_per_fnc, host):
     test_dir = "/home/root/"
     test_file = "nand_test_file"
 
@@ -20,10 +20,10 @@ def test_non_volatility(qemu_instance_per_fcn, host):
     assert out.returncode == 0, eval(pytest.run_fail_str)
 
     # currently rebooting HPPS requires having the watchdog time out
-    qemu_instance_per_fcn['serial2'].sendline("taskset -c 0 /opt/hpsc-utils/wdtester /dev/watchdog0 0")
-    assert(qemu_instance_per_fcn['serial2'].expect("hpsc-chiplet login: ") == 0)
-    qemu_instance_per_fcn['serial2'].sendline('root')
-    assert(qemu_instance_per_fcn['serial2'].expect('root@hpsc-chiplet:~# ') == 0)
+    hpps_serial_per_fnc.sendline("taskset -c 0 /opt/hpsc-utils/wdtester /dev/watchdog0 0")
+    assert(hpps_serial_per_fnc.expect("hpsc-chiplet login: ") == 0)
+    hpps_serial_per_fnc.sendline('root')
+    assert(hpps_serial_per_fnc.expect('root@hpsc-chiplet:~# ') == 0)
 
     # after the reboot, check that the test_file is still there
     out = run_tester_on_host(host, "ls " + test_dir)
