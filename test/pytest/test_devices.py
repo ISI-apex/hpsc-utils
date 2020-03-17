@@ -16,7 +16,7 @@ class SSHTester:
         tester_remote_path = "/opt/hpsc-utils/" + self.testers[tester_num]
         out = subprocess.run(['ssh', hostname] + tester_pre_args +
                 [tester_remote_path] + tester_post_args,
-                universal_newlines=True, stdout=subprocess.PIPE,
+                universal_newlines=False, stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE)
         return out
 
@@ -102,7 +102,7 @@ class TestMailboxMultiSystem(SSHTester):
         assert(rtps_serial.expect('TEST: test_mbox_rtps_hpps: begin') == 0)
 
         out = subprocess.run(['ssh', host] + [tester_remote_path] + ['-c',
-            str(core_num)], universal_newlines=True, stdout=subprocess.PIPE,
+            str(core_num)], universal_newlines=False, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
 
         assert(rtps_serial.expect('TEST: test_mbox_rtps_hpps: success') == 0)
@@ -185,10 +185,11 @@ class TestSharedMem(SSHTester):
 
         # get a list of shared memory regions
         out = subprocess.run(['ssh', host, "ls", shm_dir],
-                universal_newlines=True, stdout=subprocess.PIPE,
+                universal_newlines=False, stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE)
         assert out.returncode == 0, eval(pytest.run_fail_str)
-        shm_regions = out.stdout.splitlines()
+        output = out.stdout.decode('ascii')
+        shm_regions = output.splitlines()
 
         for shm_region in shm_regions:
             # write 0xff to each of num_write_bytes consecutive bytes of each shm_region
@@ -198,7 +199,8 @@ class TestSharedMem(SSHTester):
             # now perform a read to confirm the write
             out = self.run_tester_on_host(host, 0, [], ['-f', shm_dir +
                 shm_region, '-s', str(num_write_bytes), '-r'])
-            read_contents = (re.search(r"Start:(.+)$", out.stdout).group(0))[6:]
+            output = out.stdout.decode('ascii')
+            read_contents = (re.search(r"Start:(.+)$", output).group(0))[6:]
             assert out.returncode == 0, eval(pytest.run_fail_str)
             assert read_contents == ' 0xff' * num_write_bytes
 
