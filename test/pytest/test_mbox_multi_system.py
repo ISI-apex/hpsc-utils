@@ -13,8 +13,6 @@ def test_rtps_hpps(qemu_instance_per_mdl, host, core_num):
 
     out = subprocess.run(['ssh', host] + [tester_remote_path] + ['-c', str(core_num)], universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    assert(qemu_instance_per_mdl['serial1'].expect('TEST_LINK: request: ACK received') == 0)
-    assert(qemu_instance_per_mdl['serial1'].expect('TEST_LINK: request: reply received') == 0)
     assert(qemu_instance_per_mdl['serial1'].expect('TEST: test_mbox_rtps_hpps: success') == 0)
 
     assert out.returncode == 64 #hpps returns number of bytes sent. we expect 64 bytes
