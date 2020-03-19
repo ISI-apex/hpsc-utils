@@ -29,6 +29,60 @@ class SSHTester:
                 stderr=subprocess.PIPE)
         return out
 
+# Track step by step, so that if it fails, we quickly get info about where
+hpps_linux_boot_steps = [
+    r'NOTICE:  ATF running on HPSC',
+    r'U-Boot.*HPSC HPPS',
+    r'Booting Linux on physical CPU 0x0',
+
+    # TODO: add more key device init messages from kernel log to here
+    r'hpsc_msg_lifecycle: 0:',
+    r'hpsc_msg_tp_shmem hpsc_msg_tp_shmem@trch: send',
+
+    # TODO: look for failure to init mailbox (observed after WDT reboot
+    # (unclean shutdown only?)). Does this need fix in TRCH logic (clear the
+    # links on reboot of subsystem?):
+    #   hpsc_mbox fff50000.mailbox: src/dest mismatch: 1/1 (expected 80/2d)
+    #   hpsc_msg_tp_mbox hpsc_msg_tp_mbox@trch: Unable to startup the chan (-16)
+    #   hpsc_msg_tp_mbox hpsc_msg_tp_mbox@trch: Channel request failed: 0
+    #   hpsc_msg_tp_mbox: probe of hpsc_msg_tp_mbox@trch failed with error -16
+
+    r"hpsc-chiplet login: ",
+]
+hpps_linux_shutdown_steps = [
+    # careful about the colors/boldface when matching
+    r'Reached target .*Power-Off',
+    r'systemd-shutdown\[1\]: Syncing filesystems and block devices\.',
+
+    # NOTE: Sometimes fs sync times out, but it is unclear if this can lead
+    # to NAND JFFS2 corruption -- it shouldn't since the unmount follows
+    # (SYNC_TIMEOUT_USEC hardcoded to 3*10s in systemd, fwiw):
+    # systemd-shutdown[1]: Syncing filesystems and block devices - timed
+    # out, issuing SIGKILL to PID \d+\.
+
+    # NOTE: between these steps there's a ~5 minute delay where Qemu has 0% CPU and
+    # 0% disk utilization (measure on fresh NAND image!); host disk utilization is
+    # not saying much because all data is probably in DRAM page caches at this point.
+    # This delay seems to be caused by systemd-journald (which is likely
+    # affected by slow NAND):
+    #   [  510.835845] systemd-journald[92]: Received SIGTERM from PID 1 (systemd-shutdow).
+    #   [  732.560813] systemd-shutdown[1]: Sending SIGKILL to remaining processes...
+
+    r'systemd-shutdown\[1\]: All filesystems unmounted.',
+    r'hpsc_msg_lifecycle: 1: 3',
+    r'hpsc_msg_tp_shmem hpsc_msg_tp_shmem@trch: send',
+    r'reboot: Power down',
+]
+
+def expect_hpps_linux_boot(conn):
+    for step in hpps_linux_boot_steps:
+        idx = conn.expect(step)
+        assert idx == 0, "expect failed for: " + step
+
+def expect_hpps_linux_shutdown(conn):
+    for step in hpps_linux_shutdown_steps:
+        idx = conn.expect([step, hpps_linux_boot_steps[0]])
+        assert idx == 0, "clean shutdown did not happen: missed step: " + step
 
 class TestDMA(SSHTester):
     testers = ["dma-tester.sh"]
@@ -251,7 +305,12 @@ class TestWDTimer(SSHTester):
         # once WDT device is opened, it needs to be kicked).
 
     # Each core starts its own watchdog timer but does not kick it.
-    @pytest.mark.timeout(800)
+    #
+    # NOTE: To test the hard shutdown (no reaction from kernel), make a similar
+    # test without the check for clean shutdown message, and run it on a
+    # profile without CONFIG_WATCHDOG_PRETIMEOUT_DEFAULT_GOV_NOTIFIER. Note that
+    # this will almost certainly corrupt NAND JFFS2 filesystem (observed).
+    @pytest.mark.timeout(1200) # clean shutdown takes 360 sec, boot 400 sec
     @pytest.mark.parametrize('core_num', range(8))
     def test_unkicked_watchdog_on_each_core(self, hpps_serial_per_fnc, host,
             core_num):
@@ -260,8 +319,13 @@ class TestWDTimer(SSHTester):
 
         # the expect calls below should return a 0 on a successful match
         assert(hpps_serial_per_fnc.expect("Kicking watchdog: no") == 0)
-        # after HPPS reboot, its login prompt should appear
-        assert(hpps_serial_per_fnc.expect("hpsc-chiplet login: ") == 0)
+
+        hpps_serial_per_fnc.expect('HPSC WDT: stage 1 interrupt received ' + \
+                'for cpu ' + str(core_num) + ' on cpu ' + str(core_num))
+        hpps_serial_per_fnc.expect('hpsc_monitor_wdt: initiating poweroff')
+
+        expect_hpps_linux_shutdown(hpps_serial_per_fnc)
+        expect_hpps_linux_boot(hpps_serial_per_fnc)
 
 class TestSRAM(SSHTester):
     testers = ["sram-tester"]
@@ -279,10 +343,13 @@ class TestSRAM(SSHTester):
         sram_before_reboot = re.search(r'Latest SRAM contents:(.+)',
                 output, flags=re.DOTALL).group(1)
 
+        # TODO: add test like this one but where whole machine (Qemu) is restarted
         # currently rebooting HPPS requires having the watchdog time out
         hpps_serial_per_fnc.sendline("taskset -c 0 " +
                 "/opt/hpsc-utils/wdtester /dev/watchdog0 0")
-        assert(hpps_serial_per_fnc.expect("hpsc-chiplet login: ") == 0)
+
+        expect_hpps_linux_boot(hpps_serial_per_fnc)
+
         hpps_serial_per_fnc.sendline('root')
         assert(hpps_serial_per_fnc.expect('root@hpsc-chiplet:~# ') == 0)
 
