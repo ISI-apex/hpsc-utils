@@ -47,16 +47,22 @@ def stop_sink_thread(th, stop_ev):
     stop_ev.set()
     th.join()
 
+SPAWN_ARGS = dict(encoding='ascii', codec_errors='ignore', timeout=1000)
+BAUDRATE = 115200
+
+def attach_port(port, pty, log_dir):
+    log = open(os.path.join(log_dir, port + '.log'), "w")
+    conn = serial.Serial(port=pty, baudrate=BAUDRATE)
+    handle = fdspawn(conn, logfile=log, **SPAWN_ARGS)
+    return handle, log
+
+
 # This function will bringup QEMU, expose a serial port for each subsystem (called "serial0",
 # "serial1" and "serial2" for TRCH, RTPS, and HPPS respectively in the returned dictionary
 # object), then perform a QEMU teardown when the assigned tests complete.
 def qemu_instance(config):
-    ser_baudrate = 115200
-    ser_fd_timeout = 1000
-    qemu_stdout_timeout = 1000
     log_dir_name = 'logs'
     tstamp = time.strftime('%Y%m%d%H%M%S')
-    spawn_args = dict(encoding='ascii', codec_errors='ignore', timeout=ser_fd_timeout)
 
     qemu_cmd = config.getoption('qemu_cmd')
     run_dir = config.getoption('run_dir')
@@ -70,13 +76,13 @@ def qemu_instance(config):
     # Create a ser_fd dictionary object with each subsystem's serial file descriptor
     ser_fd = dict();
     log_files = []
+    handles = {}
 
     # Now start QEMU without any screen sessions
     # Note that the Popen call below combines stdout and stderr together
-    qmp_port = None
     qemu_log_name = 'qemu'
     qemu_log = open(os.path.join(log_dir, qemu_log_name + '.log'), "w")
-    qemu = pexpect.spawn(qemu_cmd, cwd=run_dir, logfile=qemu_log, **spawn_args)
+    qemu = pexpect.spawn(qemu_cmd, cwd=run_dir, logfile=qemu_log, **SPAWN_ARGS)
     log_files.append((qemu_log_name, qemu_log))
 
     qemu.expect('QMP_PORT = (\d+)')
@@ -99,20 +105,14 @@ def qemu_instance(config):
     trch_ser_port, rtps_ser_port, hpps_ser_port = "serial0", "serial1", "serial2"
 
     # Connect to the serial ports, then issue a continue command to QEMU
-    trch_ser_log = open(os.path.join(log_dir, trch_ser_port + '.log'), "w")
-    log_files.append((trch_ser_port, trch_ser_log))
-    trch_ser_conn = serial.Serial(port=pty_devs[trch_ser_port], baudrate=ser_baudrate)
-    trch_ser_fd = fdspawn(trch_ser_conn, logfile=trch_ser_log, **spawn_args)
+    for port in serial_ports:
+        handle, log = attach_port(port, pty_devs[port], log_dir)
+        handles[port] = handle
+        log_files.append((port, log))
 
-    rtps_ser_log = open(os.path.join(log_dir, rtps_ser_port + '.log'), "w")
-    log_files.append((rtps_ser_port, rtps_ser_log))
-    rtps_ser_conn = serial.Serial(port=pty_devs[rtps_ser_port], baudrate=ser_baudrate)
-    rtps_ser_fd = fdspawn(rtps_ser_conn, logfile=rtps_ser_log, **spawn_args)
-
-    hpps_ser_log = open(os.path.join(log_dir, hpps_ser_port + '.log'), "w")
-    log_files.append((hpps_ser_port, hpps_ser_log))
-    hpps_ser_conn = serial.Serial(port=pty_devs[hpps_ser_port], baudrate=ser_baudrate)
-    hpps_ser_fd = fdspawn(hpps_ser_conn, logfile=hpps_ser_log, **spawn_args)
+    trch_ser_fd = handles["serial0"]
+    rtps_ser_fd = handles["serial1"]
+    hpps_ser_fd = handles["serial2"]
 
     qmp.command("cont")
 
