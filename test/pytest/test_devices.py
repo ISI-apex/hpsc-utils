@@ -17,6 +17,18 @@ import time
 # to make the threads non-blocking, so that the fixture can clean them up
 # at any point -- ok too. Adding timeouts in the tests might be simpler.
 
+HPPS_LINUX_BOOT_TIME_S = 400
+
+# NOTE: between these steps there's a ~5 minute delay where Qemu has 0% CPU and
+# 0% disk utilization (measure on fresh NAND image!); host disk utilization is
+# not saying much because all data is probably in DRAM page caches at this point.
+# This delay seems to be caused by systemd-journald (same for both boots from NAND
+# and preloaded boots from initramfs image in DRAM):
+#   [  510.835845] systemd-journald[92]: Received SIGTERM from PID 1 (systemd-shutdow).
+#   [  732.560813] systemd-shutdown[1]: Sending SIGKILL to remaining processes...
+HPPS_LINUX_SHUTDOWN_TIME_S = 400
+
+
 class SSHTester:
     testers = [] # derived classes override
 
@@ -60,14 +72,6 @@ hpps_linux_shutdown_steps = [
     # systemd-shutdown[1]: Syncing filesystems and block devices - timed
     # out, issuing SIGKILL to PID \d+\.
 
-    # NOTE: between these steps there's a ~5 minute delay where Qemu has 0% CPU and
-    # 0% disk utilization (measure on fresh NAND image!); host disk utilization is
-    # not saying much because all data is probably in DRAM page caches at this point.
-    # This delay seems to be caused by systemd-journald (which is likely
-    # affected by slow NAND):
-    #   [  510.835845] systemd-journald[92]: Received SIGTERM from PID 1 (systemd-shutdow).
-    #   [  732.560813] systemd-shutdown[1]: Sending SIGKILL to remaining processes...
-
     r'systemd-shutdown\[1\]: All filesystems unmounted.',
     r'hpsc_msg_lifecycle: 1: 3',
     r'hpsc_msg_tp_shmem hpsc_msg_tp_shmem@trch: send',
@@ -87,7 +91,7 @@ def expect_hpps_linux_shutdown(conn):
 class TestDMA(SSHTester):
     testers = ["dma-tester.sh"]
 
-    @pytest.mark.timeout(400)
+    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S)
     @pytest.mark.parametrize('buf_size', [8192, 16384, -1])
     def test_test_buffer_size(self, qemu_instance_per_mdl, host, buf_size):
         out = self.run_tester_on_host(host, 0, [], ['-b', str(buf_size)])
@@ -129,7 +133,7 @@ class TestDMA(SSHTester):
             assert out.returncode == 5, eval(pytest.run_fail_str)
 
 class TestCPUHotplug(SSHTester):
-    @pytest.mark.timeout(400)
+    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S)
     @pytest.mark.parametrize('core_num', range(1,8))
     def test_hotplug(self, hpps_serial, core_num):
         hpps_serial.sendline('root')
@@ -148,7 +152,7 @@ class TestCPUHotplug(SSHTester):
 class TestIntAffinity(SSHTester):
     testers = ["interrupt-affinity-tester.sh"]
 
-    @pytest.mark.timeout(400)
+    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S)
     @pytest.mark.parametrize('core_num', range(8))
     def test_interrupt_affinity_on_each_core(self, qemu_instance_per_mdl, host,
             core_num):
@@ -156,7 +160,7 @@ class TestIntAffinity(SSHTester):
         assert out.returncode == 0, eval(pytest.run_fail_str)
 
 class TestMailboxMultiSystem(SSHTester):
-    @pytest.mark.timeout(400)
+    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S)
     @pytest.mark.parametrize('core_num', range(8))
     def test_rtps_hpps(self, rtps_serial, host, core_num):
         tester_remote_path = '/opt/hpsc-utils/mbox-server-tester'
@@ -178,7 +182,7 @@ class TestMailbox(SSHTester):
 
     # Verify that mboxtester works with the process pinned separately to each
     # HPPS core.
-    @pytest.mark.timeout(400)
+    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S)
     @pytest.mark.parametrize('core_num', range(8))
     @pytest.mark.parametrize('notif', ['none', 'select', 'poll', 'epoll'])
     def test_hpps_to_trch_for_each_notification_and_core(self,
@@ -240,7 +244,7 @@ class TestMailbox(SSHTester):
 class TestSharedMem(SSHTester):
     testers = ["shm-standalone-tester", "shm-tester"]
 
-    @pytest.mark.timeout(400)
+    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S)
     def test_write_then_read_on_each_shm_region(self, qemu_instance_per_mdl,
             host):
         shm_dir = '/dev/hpsc_shmem/'
@@ -275,7 +279,7 @@ class TestSharedMem(SSHTester):
 class TestRTITimer(SSHTester):
     testers = ["rtit-tester"]
 
-    @pytest.mark.timeout(400)
+    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S)
     @pytest.mark.parametrize('core_num', range(8))
     def test_rti_timer_on_each_core(self, qemu_instance_per_mdl, host, core_num):
         out = self.run_tester_on_host(host, 0, ['taskset', '-c',
@@ -289,7 +293,7 @@ class TestWDTimer(SSHTester):
     WD_TIMEOUT_SEC = 5 + 400
 
     # Each core starts its own watchdog timer and then kicks it.
-    @pytest.mark.timeout(400 + WD_TIMEOUT_SEC)
+    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S + WD_TIMEOUT_SEC)
     @pytest.mark.parametrize('core_num', range(8))
     def test_kicked_watchdog_on_each_core(self, hpps_serial_per_fnc, host,
             core_num):
@@ -310,7 +314,7 @@ class TestWDTimer(SSHTester):
     # test without the check for clean shutdown message, and run it on a
     # profile without CONFIG_WATCHDOG_PRETIMEOUT_DEFAULT_GOV_NOTIFIER. Note that
     # this will almost certainly corrupt NAND JFFS2 filesystem (observed).
-    @pytest.mark.timeout(1200) # clean shutdown takes 360 sec, boot 400 sec
+    @pytest.mark.timeout(2 * HPPS_LINUX_BOOT_TIME_S + HPPS_LINUX_SHUTDOWN_TIME_S)
     @pytest.mark.parametrize('core_num', range(8))
     def test_unkicked_watchdog_on_each_core(self, hpps_serial_per_fnc, host,
             core_num):
@@ -333,7 +337,7 @@ class TestSRAM(SSHTester):
     # This SRAM test will modify an array in SRAM, reboot HPPS (using a
     # watchdog timeout), then check that the SRAM array is the same.
     # Since this test will boot QEMU, then reboot QEMU, it is given more time.
-    @pytest.mark.timeout(800)
+    @pytest.mark.timeout(2 * HPPS_LINUX_BOOT_TIME_S)
     def test_non_volatility(self, hpps_serial_per_fnc, host): # TODO: per_mdl shoud work
         # increment the first 100 elements of the SRAM array by 2, then reboot
         # HPPS
