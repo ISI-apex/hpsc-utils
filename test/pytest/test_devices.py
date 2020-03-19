@@ -3,6 +3,11 @@ import subprocess
 import serial
 import re
 
+# On timeouts: boot from a fresh NAND takes ~5mins (due to udev initializing
+# the HW database), so timeouts need to be around 400s. Subsequent boots are
+# much faster, but we want any test to be runnable from fresh NAND
+# individually.
+
 class SSHTester:
     testers = [] # derived classes override
 
