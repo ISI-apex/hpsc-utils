@@ -64,6 +64,19 @@ E.g., to run DMA tests given that Qemu HPPS Linux host is configured under
 
     pytest -sv --host hpsc-hpps-qemu --durations=0 -k TestDMA
 
+Log files for Qemu and for each serial port on the machine are placed in the
+`logs/` subdirectory in the run directory (current directory by default, or one
+specified with `--run-dir`). You may monitor any of the logs as the tests run,
+like so:
+
+    tail -f logs/serial0.log
+
+After the exeuction of each Qemu instance, a copy of each log files is saved
+in a file named like the original with a timestamp appended, for preservation
+of all output that happened during the test session. The monitoring as shown
+above will keep displaying the conent, as the "current" file is overwritten by
+new Qemu instances as the tests run.
+
 Three of the test group (`TestSRAM` and `TestWDT` classes, and `test_nand.py`)
 require a HPPS reboot via a watchdog timeout. These tests will fail in boot
 configuration profiles named `sys-preload-*` where binaries are preloaded into

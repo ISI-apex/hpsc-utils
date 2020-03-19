@@ -7,6 +7,15 @@ import re
 # the HW database), so timeouts need to be around 400s. Subsequent boots are
 # much faster, but we want any test to be runnable from fresh NAND
 # individually.
+#
+# TODO: instead of relying on the pytest-timeout annotation marks, add timeouts
+# to individual pexect calls, it's more verbose, but it fixes the issue of
+# stuck fixture threads when tests fail (under certain circumstances).
+# pytest-timeout calls pytest.fail() from a handler, and the fixture cleanup
+# does run, but that cleanup is not capable of getting our pexpect threads out
+# of whatever # wait (pexpect call) they might be in. An alternative is
+# to make the threads non-blocking, so that the fixture can clean them up
+# at any point -- ok too. Adding timeouts in the tests might be simpler.
 
 class SSHTester:
     testers = [] # derived classes override

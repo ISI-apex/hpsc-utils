@@ -6,6 +6,7 @@ import shutil
 import re
 import time
 import threading
+import queue
 import pexpect
 from pexpect.fdpexpect import fdspawn
 
@@ -37,29 +38,172 @@ def sink_serial_port(conn, stop_ev):
         elif r == 1:
             return
 
-def start_sink_thread(fd):
-    stop_ev = threading.Event()
-    th = threading.Thread(target=sink_serial_port, args=(fd, stop_ev))
-    th.start()
-    return fd, th, stop_ev
-
-def stop_sink_thread(th, stop_ev):
-    stop_ev.set()
-    th.join()
-
 SPAWN_ARGS = dict(encoding='ascii', codec_errors='ignore', timeout=1000)
-BAUDRATE = 115200
 
-def attach_port(port, pty, log_dir):
-    log = open(os.path.join(log_dir, port + '.log'), "w")
-    conn = serial.Serial(port=pty, baudrate=BAUDRATE)
+# TODO: These might need to be dynamic: not all profiles use all subsystems
+trch_port = "serial0"
+rtps_port = "serial1"
+hpps_port = "serial2"
+
+class Req:
+    pass
+class ExpectReq(Req):
+    def __init__(self, patterns):
+        self.patterns = patterns
+class SendLineReq(Req):
+    def __init__(self, line):
+        self.line = line
+class SendIntrReq(Req):
+    pass
+class StartEatReq(Req):
+    pass
+class StopEatReq(Req):
+    pass
+class PidReq(Req):
+    pass
+class WaitReq(Req):
+    pass
+class StopReq(Req):
+    pass
+
+class Resp:
+    pass
+class ErrorResp(Resp):
+    def __init__(self, exc):
+        self.exc = exc
+class RcResp(Resp):
+    def __init__(self, rc, match=None):
+        self.rc = rc
+        self.match = match
+class PidResp(Resp):
+    def __init__(self, pid):
+        self.pid = pid
+
+class Chan:
+    def __init__(self):
+        self.req_qu = queue.Queue(maxsize=1)
+        self.resp_qu = queue.Queue(maxsize=1)
+
+    # private
+    def do_rc_req(self, req):
+        self.req_qu.put(req)
+        ret = self.resp_qu.get()
+        if isinstance(ret, RcResp):
+            return ret.rc
+        elif isinstance(ret, ErrorResp):
+            raise Exception("request to pexpect thread failed") from ret.exc
+
+    def expect(self, patterns):
+        # Mimic pexpect interface
+        if not isinstance(patterns, list):
+            patterns = [patterns]
+
+        self.req_qu.put(ExpectReq(patterns))
+        ret = self.resp_qu.get()
+        if isinstance(ret, RcResp):
+            if ret.match is not None:
+                self.match = ret.match
+            return ret.rc
+        elif isinstance(ret, ErrorResp):
+            raise Exception("expect request failed") from ret.exc
+
+    def sendline(self, line):
+        return self.do_rc_req(SendLineReq(line))
+
+    def sendintr(self):
+        return self.do_rc_req(SendIntrReq())
+
+    # private
+    def do_eat_req(self, req):
+        self.req_qu.put(req)
+        ret = self.resp_qu.get()
+        assert isinstance(ret, RcResp)
+        assert ret.rc == 0
+
+    def start_eat(self):
+        self.do_eat_req(StartEatReq())
+
+    def stop_eat(self):
+        self.do_eat_req(StopEatReq())
+
+    def wait(self):
+        return self.do_rc_req(WaitReq())
+
+    def pid(self):
+        self.req_qu.put(PidReq())
+        ret = self.resp_qu.get()
+        assert isinstance(ret, PidResp)
+        return ret.pid
+
+    def stop(self):
+        self.req_qu.put(StopReq())
+
+# We want ability to consume streams in the background to get all log, not just
+# the log during our expect calls) and to prevent Qemu CPU thread blocking when
+# some FIFO along the serial port output path fills up (not 100% confirmed that
+# this is happening, but suspected as root cause of stalls; might be PySerial
+# related). So we need background threads that call expect(EOF).
+#
+# BUT Pexpect handles cannot be passed among threads (accoding to Common
+# Problems in the docs; it appwars to work, but we won't risk it), so we need
+# to spawn to get a handle within the thread and only use it from that thread.
+# Also, having multiple spawns done from the same thread may not be supported
+# by pexpect (again, appears to work, but we won't risk it).
+def attach_port(port, pty, log, chan):
+    conn = serial.Serial(port=pty, baudrate=115200)
     handle = fdspawn(conn, logfile=log, **SPAWN_ARGS)
-    return handle, log
+    service_loop(handle, chan)
+    handle.close() # closes the conn file descriptor
 
+def spawn(cmd, cwd, log, chan):
+    handle = pexpect.spawn(cmd, cwd=cwd, logfile=log, **SPAWN_ARGS)
+    service_loop(handle, chan)
+    handle.close()
 
-# This function will bringup QEMU, expose a serial port for each subsystem (called "serial0",
-# "serial1" and "serial2" for TRCH, RTPS, and HPPS respectively in the returned dictionary
-# object), then perform a QEMU teardown when the assigned tests complete.
+def service_loop(handle, chan):
+    poll_interval = 2 # check for requests (seconds)
+    eat = False
+    run = True
+    while run:
+        try:
+            req = chan.req_qu.get(timeout=poll_interval)
+            if isinstance(req, ExpectReq) or \
+                    isinstance(req, SendLineReq) or \
+                    isinstance(req, SendIntrReq):
+                try:
+                    if isinstance(req, ExpectReq):
+                        r = handle.expect(req.patterns)
+                        chan.resp_qu.put(RcResp(r, handle.match))
+                    elif isinstance(req, SendLineReq):
+                        r = handle.sendline(req.line)
+                        chan.resp_qu.put(RcResp(r))
+                    elif isinstance(req, SendIntrReq):
+                        r = handle.sendintr() # not available for fdspawn
+                        chan.resp_qu.put(RcResp(r))
+                except Exception as e:
+                    chan.resp_qu.put(ErrorResp(e))
+            elif isinstance(req, StartEatReq):
+                eat = True
+                chan.resp_qu.put(RcResp(0))
+            elif isinstance(req, StopEatReq):
+                eat = False
+                chan.resp_qu.put(RcResp(0))
+            elif isinstance(req, WaitReq):
+                r = handle.wait()
+                chan.resp_qu.put(RcResp(r))
+            elif isinstance(req, PidReq):
+                chan.resp_qu.put(PidResp(handle.pid))
+            elif isinstance(req, StopReq):
+                run = False
+        except queue.Empty:
+            pass
+        if eat:
+            # Suprizingly, EOF does happen sometimes, even though files not
+            # closed while we're here. Not sure why. Expect EOF too, then.
+            handle.expect([pexpect.TIMEOUT, pexpect.EOF], poll_interval)
+
+# This function will bringup QEMU, and create a channel to each serial port
+# in the Qemu machine; then perform a QEMU teardown when the assigned tests complete.
 def qemu_instance(config):
     log_dir_name = 'logs'
     tstamp = time.strftime('%Y%m%d%H%M%S')
@@ -82,16 +226,18 @@ def qemu_instance(config):
     # Note that the Popen call below combines stdout and stderr together
     qemu_log_name = 'qemu'
     qemu_log = open(os.path.join(log_dir, qemu_log_name + '.log'), "w")
-    qemu = pexpect.spawn(qemu_cmd, cwd=run_dir, logfile=qemu_log, **SPAWN_ARGS)
     log_files.append((qemu_log_name, qemu_log))
+
+    qemu = Chan()
+    qemu_th = threading.Thread(target=spawn, args=(qemu_cmd, run_dir, qemu_log, qemu))
+    qemu_th.start()
+    qemu_pid = qemu.pid()
 
     qemu.expect('QMP_PORT = (\d+)')
     qmp_port = int(qemu.match.group(1))
 
     qemu.expect('\(qemu\) ') # just for good measure
-
-    # Consume, so that FIFO does not fill up, causing the process to halt
-    _, qemu_th, qemu_stop_ev = start_sink_thread(qemu)
+    qemu.start_eat() # consume to get log and avoid blocking due to full FIFOs
 
     qmp = QMP('localhost', qmp_port, timeout=10)
 
@@ -104,53 +250,60 @@ def qemu_instance(config):
             pty_devs[cdev[u"label"]] = devname.split(':')[1]
     
     # Association defined by order of UARTs in Qemu machine model (device tree)
-    trch_ser_port, rtps_ser_port, hpps_ser_port = "serial0", "serial1", "serial2"
+    serial_ports = ["serial0", "serial1", "serial2"]
+    threads = {}
+    chans = {}
 
     # Connect to the serial ports, then issue a continue command to QEMU
     for port in serial_ports:
-        handle, log = attach_port(port, pty_devs[port], log_dir)
-        handles[port] = handle
+        log = open(os.path.join(log_dir, port + '.log'), "w")
         log_files.append((port, log))
 
-    trch_ser_fd = handles["serial0"]
-    rtps_ser_fd = handles["serial1"]
-    hpps_ser_fd = handles["serial2"]
+        chans[port] = Chan()
+        threads[port] = threading.Thread(target=attach_port,
+                        args=(port, pty_devs[port], log, chans[port]))
+        threads[port].start()
 
     qmp.command("cont")
 
-    trch_ser_fd.expect('\[\d+\] Waiting for interrupt...')
+    # For convenience
+    trch = chans[trch_port]
+    rtps = chans[rtps_port]
+    hpps = chans[hpps_port]
 
-    # Check for the RTEMS shell prompt on RTPS
-    rtps_ser_fd.expect('SHLL \[/\] # ')
-
+    # Wait for subsystems to boot
+    trch.expect('\[\d+\] Waiting for interrupt...')
+    rtps.expect('SHLL \[/\] # ')
     # Log into HPPS Linux
-    hpps_ser_fd.expect('hpsc-chiplet login: ')
-    hpps_ser_fd.sendline('root')
-    hpps_ser_fd.expect('root@hpsc-chiplet:~# ')
+    hpps.expect('hpsc-chiplet login: ')
+    hpps.sendline('root')
+    hpps.expect('root@hpsc-chiplet:~# ')
 
-    # Eat the output until a test request a fixture for the respective port
-    ser_fd["serial0"] = start_sink_thread(trch_ser_fd)
-    ser_fd["serial1"] = start_sink_thread(rtps_ser_fd)
-    ser_fd["serial2"] = start_sink_thread(hpps_ser_fd)
+    # Eat the output until a test requests a fixture for the respective port
+    for chan in chans.values():
+        chan.start_eat()
 
-    yield ser_fd
+    yield chans
 
-    pid = qemu.pid
+    for chan in chans.values():
+        chan.stop_eat()
+        chan.stop()
+    for th in threads.values():
+        th.join()
 
-    for fd, th, ev in ser_fd.values():
-        stop_sink_thread(th, ev)
-        fd.close()
-
-    stop_sink_thread(qemu_th, qemu_stop_ev)
+    qemu.stop_eat()
     qemu.sendline("quit")
     qemu.expect(pexpect.EOF)
-    assert qemu.wait() == 0, "Qemu process exited uncleanly"
+    rc = qemu.wait()
+    assert rc == 0, "Qemu process exited uncleanly"
+    qemu.stop()
+    qemu_th.join()
 
     for log_name, log_file in log_files:
         log_file.close()
         shutil.copyfile(os.path.join(log_dir, log_name + '.log'),
                 os.path.join(log_dir,
-                    log_name + '.' + tstamp + '.' + str(pid) + '.log'))
+                    log_name + '.' + tstamp + '.' + str(qemu_pid) + '.log'))
 
 @pytest.fixture(scope="module")
 def qemu_instance_per_mdl(request):
@@ -161,37 +314,33 @@ def qemu_instance_per_fnc(request):
     yield from qemu_instance(request.config)
 
 def use_console(qemu_inst, serial_port):
-    fd, th, ev = qemu_inst[serial_port]
+    chan = qemu_inst[serial_port]
 
-    # Pause eating the output
-    stop_sink_thread(th, ev)
-
-    yield fd
-
-    # Resume eating the output
-    qemu_inst[serial_port] = start_sink_thread(fd)
+    chan.stop_eat() # Pause eating the output
+    yield chan
+    chan.start_eat() # Resume eating the output
 
 # The serial port fixture is always per function, for either Qemu instance scope. */
 @pytest.fixture(scope="function")
 def trch_serial(qemu_instance_per_mdl):
-    yield from use_console(qemu_instance_per_mdl, "serial0")
+    yield from use_console(qemu_instance_per_mdl, trch_port)
 @pytest.fixture(scope="function")
 def rtps_serial(qemu_instance_per_mdl):
-    yield from use_console(qemu_instance_per_mdl, "serial1")
+    yield from use_console(qemu_instance_per_mdl, rtps_port)
 @pytest.fixture(scope="function")
 def hpps_serial(qemu_instance_per_mdl):
-    yield from use_console(qemu_instance_per_mdl, "serial2")
+    yield from use_console(qemu_instance_per_mdl, hpps_port)
 
 # The serial port fixture is always per function, for either Qemu instance scope. */
 @pytest.fixture(scope="function")
 def trch_serial_per_fnc(qemu_instance_per_fnc):
-    yield from use_console(qemu_instance_per_fnc, "serial0")
+    yield from use_console(qemu_instance_per_fnc, trch_port)
 @pytest.fixture(scope="function")
 def rtps_serial_per_fnc(qemu_instance_per_fnc):
-    yield from use_console(qemu_instance_per_fnc, "serial1")
+    yield from use_console(qemu_instance_per_fnc, rtps_port)
 @pytest.fixture(scope="function")
 def hpps_serial_per_fnc(qemu_instance_per_fnc):
-    yield from use_console(qemu_instance_per_fnc, "serial2")
+    yield from use_console(qemu_instance_per_fnc, hpps_port)
 
 def pytest_addoption(parser):
     parser.addoption("--host", action="store", help="remote hostname")
