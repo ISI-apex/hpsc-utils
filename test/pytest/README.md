@@ -10,14 +10,14 @@ Prerequisites
 Before running the scripts, the user should verify the
 following:
 * Python3 should be installed locally, along with the following packages:
-`pyserial`, `pexpect`, `pytest`, `pytest-timeout`.  On a CentOS 7 machine,
+`pexpect`, `pytest`, `pytest-timeout`.  On a CentOS 7 machine,
 the following commands should suffice:
 
 ```shell
 yum -y install https://centos7.iuscommunity.org/ius-release.rpm
 yum -y install python36-pip
 pip3 install --upgrade pip
-pip3 install pyserial pexpect pytest pytest-timeout
+pip3 install pexpect pytest pytest-timeout
 ```
 
 * The `CODEBUILD_SRC_DIR` environment variable should be set to the absolute

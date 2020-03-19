@@ -1,6 +1,5 @@
 import pytest
 import subprocess
-import serial
 import re
 
 # On timeouts: boot from a fresh NAND takes ~5mins (due to udev initializing

@@ -1,4 +1,3 @@
-import serial
 import subprocess
 import pytest
 import os
@@ -150,7 +149,7 @@ class Chan:
 # Also, having multiple spawns done from the same thread may not be supported
 # by pexpect (again, appears to work, but we won't risk it).
 def attach_port(port, pty, log, chan):
-    conn = serial.Serial(port=pty, baudrate=115200)
+    conn = os.open(pty, os.O_RDWR|os.O_NONBLOCK|os.O_NOCTTY)
     handle = fdspawn(conn, logfile=log, **SPAWN_ARGS)
     service_loop(handle, chan)
     handle.close() # closes the conn file descriptor
