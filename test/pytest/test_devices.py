@@ -1,6 +1,7 @@
 import pytest
 import subprocess
 import re
+import time
 
 # On timeouts: boot from a fresh NAND takes ~5mins (due to udev initializing
 # the HW database), so timeouts need to be around 400s. Subsequent boots are
@@ -230,16 +231,24 @@ class TestRTITimer(SSHTester):
 class TestWDTimer(SSHTester):
     testers = ["wdtester"]
 
+    # both stages, set in hpsc-baremetal/trch/watchdog.c
+    WD_TIMEOUT_SEC = 5 + 400
+
     # Each core starts its own watchdog timer and then kicks it.
-    @pytest.mark.timeout(400)
+    @pytest.mark.timeout(400 + WD_TIMEOUT_SEC)
     @pytest.mark.parametrize('core_num', range(8))
     def test_kicked_watchdog_on_each_core(self, hpps_serial_per_fnc, host,
             core_num):
         hpps_serial_per_fnc.sendline("taskset -c " + str(core_num) + " " +
                 "/opt/hpsc-utils/wdtester /dev/watchdog" + str(core_num) + " 1")
 
-        # the expect call below should return a 0 on a successful match
-        assert(hpps_serial_per_fnc.expect("Kicking watchdog: yes") == 0)
+        time_wd_enabled = time.time()
+        while time.time() - time_wd_enabled < WD_TIMEOUT_SEC * 1.25: # 25% margin
+            assert(hpps_serial_per_fnc.expect("Kicking watchdog: yes") == 0)
+            time.sleep(2)
+        # at this point, the fixture cleanup will terminate Qemu (we
+        # cannot reuse this Qemu for the other core tests, because
+        # once WDT device is opened, it needs to be kicked).
 
     # Each core starts its own watchdog timer but does not kick it.
     @pytest.mark.timeout(800)
