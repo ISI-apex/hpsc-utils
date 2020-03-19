@@ -2,7 +2,9 @@ import serial
 import subprocess
 import pytest
 import os
+import shutil
 import re
+import time
 import threading
 import pexpect
 from pexpect.fdpexpect import fdspawn
@@ -52,20 +54,31 @@ def qemu_instance(config):
     ser_baudrate = 115200
     ser_fd_timeout = 1000
     qemu_stdout_timeout = 1000
+    log_dir_name = 'logs'
+    tstamp = time.strftime('%Y%m%d%H%M%S')
 
     qemu_cmd = config.getoption('qemu_cmd')
     run_dir = config.getoption('run_dir')
     if run_dir is None:
         run_dir = os.path.join(os.environ['CODEBUILD_SRC_DIR'], "hpsc-bsp")
 
+    log_dir = os.path.join(run_dir, log_dir_name)
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
     # Create a ser_fd dictionary object with each subsystem's serial file descriptor
     ser_fd = dict();
+    log_files = []
 
     # Now start QEMU without any screen sessions
     # Note that the Popen call below combines stdout and stderr together
     qmp_port = None
+    qemu_log_name = 'qemu'
+    qemu_log = open(os.path.join(log_dir, qemu_log_name + '.log'), "wb")
     qemu = pexpect.spawn(qemu_cmd, cwd=run_dir, timeout=qemu_stdout_timeout,
-            logfile=open(os.path.join(run_dir, "test-qemu.log"), "wb"))
+            logfile=qemu_log)
+    log_files.append((qemu_log_name, qemu_log))
+
     qemu.expect('QMP_PORT = (\d+)')
     qmp_port = int(qemu.match.group(1))
 
@@ -86,17 +99,20 @@ def qemu_instance(config):
     trch_ser_port, rtps_ser_port, hpps_ser_port = "serial0", "serial1", "serial2"
 
     # Connect to the serial ports, then issue a continue command to QEMU
+    trch_ser_log = open(os.path.join(log_dir, trch_ser_port + '.log'), "wb")
+    log_files.append((trch_ser_port, trch_ser_log))
     trch_ser_conn = serial.Serial(port=pty_devs[trch_ser_port], baudrate=ser_baudrate)
-    trch_ser_fd = fdspawn(trch_ser_conn, timeout=ser_fd_timeout,
-            logfile=open(os.path.join(run_dir, "test-trch.log"), "wb"))
+    trch_ser_fd = fdspawn(trch_ser_conn, timeout=ser_fd_timeout, logfile=trch_ser_log)
 
+    rtps_ser_log = open(os.path.join(log_dir, rtps_ser_port + '.log'), "wb")
+    log_files.append((rtps_ser_port, rtps_ser_log))
     rtps_ser_conn = serial.Serial(port=pty_devs[rtps_ser_port], baudrate=ser_baudrate)
-    rtps_ser_fd = fdspawn(rtps_ser_conn, timeout=ser_fd_timeout,
-            logfile=open(os.path.join(run_dir, "test-rtps.log"), "wb"))
+    rtps_ser_fd = fdspawn(rtps_ser_conn, timeout=ser_fd_timeout, logfile=rtps_ser_log)
 
+    hpps_ser_log = open(os.path.join(log_dir, hpps_ser_port + '.log'), "wb")
+    log_files.append((hpps_ser_port, hpps_ser_log))
     hpps_ser_conn = serial.Serial(port=pty_devs[hpps_ser_port], baudrate=ser_baudrate)
-    hpps_ser_fd = fdspawn(hpps_ser_conn, timeout=ser_fd_timeout,
-            logfile=open(os.path.join(run_dir, "test-hpps.log"), "wb"))
+    hpps_ser_fd = fdspawn(hpps_ser_conn, timeout=ser_fd_timeout, logfile=hpps_ser_log)
 
     qmp.command("cont")
 
@@ -117,11 +133,19 @@ def qemu_instance(config):
 
     yield ser_fd
 
+    pid = qemu.pid
+
     for fd, th, ev in ser_fd.values():
         stop_sink_thread(th, ev)
         fd.close()
 
     qemu.terminate()
+
+    for log_name, log_file in log_files:
+        log_file.close()
+        shutil.copyfile(os.path.join(log_dir, log_name + '.log'),
+                os.path.join(log_dir,
+                    log_name + '.' + tstamp + '.' + str(pid) + '.log'))
 
 @pytest.fixture(scope="module")
 def qemu_instance_per_mdl(request):
