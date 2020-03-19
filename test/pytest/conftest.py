@@ -88,6 +88,8 @@ def qemu_instance(config):
     qemu.expect('QMP_PORT = (\d+)')
     qmp_port = int(qemu.match.group(1))
 
+    qemu.expect('\(qemu\) ') # just for good measure
+
     # Consume, so that FIFO does not fill up, causing the process to halt
     _, qemu_th, qemu_stop_ev = start_sink_thread(qemu)
 
