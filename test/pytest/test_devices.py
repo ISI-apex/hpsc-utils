@@ -258,8 +258,9 @@ class TestSRAM(SSHTester):
         # HPPS
         out = self.run_tester_on_host(host, 0, [], ["-s", "100", "-i", "2"])
         assert out.returncode == 0, eval(pytest.run_fail_str)
+        output = out.stdout.decode('ascii')
         sram_before_reboot = re.search(r'Latest SRAM contents:(.+)',
-                out.stdout, flags=re.DOTALL).group(1)
+                output, flags=re.DOTALL).group(1)
 
         # currently rebooting HPPS requires having the watchdog time out
         hpps_serial_per_fnc.sendline("taskset -c 0 " +
@@ -272,7 +273,8 @@ class TestSRAM(SSHTester):
         # changed
         out = self.run_tester_on_host(host, 0, [], ["-s", "100"])
         assert out.returncode == 0, eval(pytest.run_fail_str)
-        sram_after_reboot = re.search(r'Latest SRAM contents:(.+)', out.stdout,
+        output = out.stdout.decode('ascii')
+        sram_after_reboot = re.search(r'Latest SRAM contents:(.+)', output,
                 flags=re.DOTALL).group(1)
         assert(sram_before_reboot == sram_after_reboot), \
             "SRAM array before reboot was: " + sram_before_reboot + \

@@ -18,7 +18,7 @@ from qmp import QMP
 
 def pytest_configure():
     # This string will be evaluated whenever a call to subprocess.run fails
-    pytest.run_fail_str = "\"\\nARGS:\\n\" + str(out.args) + \"\\nRETURN CODE:\\n\" + str(out.returncode) + \"\\nSTDOUT:\\n\" + out.stdout + \"\\nSTDERR:\\n\" + out.stderr"
+    pytest.run_fail_str = "\"\\nARGS:\\n\" + str(out.args) + \"\\nRETURN CODE:\\n\" + str(out.returncode) + \"\\nSTDOUT:\\n\" + out.stdout.decode('ascii') + \"\\nSTDERR:\\n\" + out.stderr.decode('ascii')"
 
 def sink_serial_port(conn, stop_ev):
     """Consume data from a pexpect file descriptor to prevent stall.
@@ -56,6 +56,7 @@ def qemu_instance(config):
     qemu_stdout_timeout = 1000
     log_dir_name = 'logs'
     tstamp = time.strftime('%Y%m%d%H%M%S')
+    spawn_args = dict(encoding='ascii', codec_errors='ignore', timeout=ser_fd_timeout)
 
     qemu_cmd = config.getoption('qemu_cmd')
     run_dir = config.getoption('run_dir')
@@ -74,9 +75,8 @@ def qemu_instance(config):
     # Note that the Popen call below combines stdout and stderr together
     qmp_port = None
     qemu_log_name = 'qemu'
-    qemu_log = open(os.path.join(log_dir, qemu_log_name + '.log'), "wb")
-    qemu = pexpect.spawn(qemu_cmd, cwd=run_dir, timeout=qemu_stdout_timeout,
-            logfile=qemu_log)
+    qemu_log = open(os.path.join(log_dir, qemu_log_name + '.log'), "w")
+    qemu = pexpect.spawn(qemu_cmd, cwd=run_dir, logfile=qemu_log, **spawn_args)
     log_files.append((qemu_log_name, qemu_log))
 
     qemu.expect('QMP_PORT = (\d+)')
@@ -99,20 +99,20 @@ def qemu_instance(config):
     trch_ser_port, rtps_ser_port, hpps_ser_port = "serial0", "serial1", "serial2"
 
     # Connect to the serial ports, then issue a continue command to QEMU
-    trch_ser_log = open(os.path.join(log_dir, trch_ser_port + '.log'), "wb")
+    trch_ser_log = open(os.path.join(log_dir, trch_ser_port + '.log'), "w")
     log_files.append((trch_ser_port, trch_ser_log))
     trch_ser_conn = serial.Serial(port=pty_devs[trch_ser_port], baudrate=ser_baudrate)
-    trch_ser_fd = fdspawn(trch_ser_conn, timeout=ser_fd_timeout, logfile=trch_ser_log)
+    trch_ser_fd = fdspawn(trch_ser_conn, logfile=trch_ser_log, **spawn_args)
 
-    rtps_ser_log = open(os.path.join(log_dir, rtps_ser_port + '.log'), "wb")
+    rtps_ser_log = open(os.path.join(log_dir, rtps_ser_port + '.log'), "w")
     log_files.append((rtps_ser_port, rtps_ser_log))
     rtps_ser_conn = serial.Serial(port=pty_devs[rtps_ser_port], baudrate=ser_baudrate)
-    rtps_ser_fd = fdspawn(rtps_ser_conn, timeout=ser_fd_timeout, logfile=rtps_ser_log)
+    rtps_ser_fd = fdspawn(rtps_ser_conn, logfile=rtps_ser_log, **spawn_args)
 
-    hpps_ser_log = open(os.path.join(log_dir, hpps_ser_port + '.log'), "wb")
+    hpps_ser_log = open(os.path.join(log_dir, hpps_ser_port + '.log'), "w")
     log_files.append((hpps_ser_port, hpps_ser_log))
     hpps_ser_conn = serial.Serial(port=pty_devs[hpps_ser_port], baudrate=ser_baudrate)
-    hpps_ser_fd = fdspawn(hpps_ser_conn, timeout=ser_fd_timeout, logfile=hpps_ser_log)
+    hpps_ser_fd = fdspawn(hpps_ser_conn, logfile=hpps_ser_log, **spawn_args)
 
     qmp.command("cont")
 
