@@ -61,8 +61,6 @@ def qemu_instance(config):
     # Create a ser_fd dictionary object with each subsystem's serial file descriptor
     ser_fd = dict();
 
-    flog_qemu = open(os.path.join(run_dir, "test-qemu.log"), "wb")
-
     # Now start QEMU without any screen sessions
     # Note that the Popen call below combines stdout and stderr together
     qmp_port = None
