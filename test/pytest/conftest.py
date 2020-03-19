@@ -89,7 +89,7 @@ def qemu_instance(config):
     qmp_port = int(qemu.match.group(1))
 
     # Consume, so that FIFO does not fill up, causing the process to halt
-    ser_fd["qemu"] = start_sink_thread(qemu)
+    _, qemu_th, qemu_stop_ev = start_sink_thread(qemu)
 
     qmp = QMP('localhost', qmp_port, timeout=10)
 
@@ -139,7 +139,10 @@ def qemu_instance(config):
         stop_sink_thread(th, ev)
         fd.close()
 
-    qemu.terminate()
+    stop_sink_thread(qemu_th, qemu_stop_ev)
+    qemu.sendline("quit")
+    qemu.expect(pexpect.EOF)
+    assert qemu.wait() == 0, "Qemu process exited uncleanly"
 
     for log_name, log_file in log_files:
         log_file.close()
