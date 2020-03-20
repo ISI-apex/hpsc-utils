@@ -1,1 +1,2 @@
-/opt/hpsc-utils/offchip-sram-tester
+# args: do_writes=1
+/opt/hpsc-utils/offchip-sram-tester 1
