@@ -949,12 +949,13 @@ $(B_hpps-linux-tests)/clean:
 # Pick some artifact that indicates completed build (relevant only for shallow build)
 $(S_hpps-linux-tests)/mboxtester: $(call mod-prereq,hpps-linux-tests) ;
 
+$(B_hpps-linux-tests)/install.fr.dir: TEST_INSTALL_PATH?=usr/local/bin
 $(B_hpps-linux-tests)/install.fr.dir: $(if $(DEEP),$(B_hpps-linux-tests),\
 												 $(S_hpps-linux-tests)/mboxtester) \
 								    | $(B_hpps-linux-tests)/
 	fakeroot -s $@.fr \
 		$(MAKE) -C $(S_hpps-linux-tests) $(HPPS_LINUX_TESTS_ARGS) \
-			DEST="$(abspath $@)/usr/bin" install
+			DEST="$(abspath $@)/$(TEST_INSTALL_PATH)" install
 	touch $@
 
 MODULES += hpps-yocto
