@@ -13,7 +13,7 @@ include $(CONF)/lib-trch-bm-preload-boot/Makefile
 include $(CONF)/lib-trch-bm-default/Makefile
 include $(CONF)/lib-r52-uboot-bm/Makefile
 include $(CONF)/lib-r52-bm-default/Makefile
-include $(CONF)/lib-hpps-full/Makefile
-include $(CONF)/lib-hpps-eth-cdns/Makefile
 SHARE += lib-hpps-yocto
 include $(CONF)/lib-hpps-yocto-nand-rootfs/Makefile
+include $(CONF)/lib-hpps-full/Makefile
+include $(CONF)/lib-hpps-eth-cdns/Makefile
