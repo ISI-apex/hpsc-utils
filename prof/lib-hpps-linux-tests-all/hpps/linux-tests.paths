@@ -1,0 +1,14 @@
+opt/hpsc-utils/mbox-multiple-core-tester
+opt/hpsc-utils/mboxtester
+opt/hpsc-utils/rtit-tester
+opt/hpsc-utils/shm-tester
+opt/hpsc-utils/wdtester
+opt/hpsc-utils/mbox-server-tester
+opt/hpsc-utils/offchip-sram-tester
+opt/hpsc-utils/shm-standalone-tester
+opt/hpsc-utils/sram-tester
+
+opt/hpsc-utils/dma-tester.sh
+opt/hpsc-utils/interrupt-affinity-tester.sh
+opt/hpsc-utils/rtit-tester.sh
+opt/hpsc-utils/wdt-kicker.sh
