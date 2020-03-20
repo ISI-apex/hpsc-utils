@@ -1,0 +1,2 @@
+# TODO: load address overlaps with u-boot env; move RTEMS image
+-	test-data      0x4003f000       $PROF_BLD/rtps/r52/test-data.txt

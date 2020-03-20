@@ -1,0 +1,2 @@
+# MEMORY ID     BLOB ID           ADDR            FILE
+rtps.dram	rtps-os           0x0004_0000     $PROF_BLD/rtps/r52/hpsc-rtems/rtems.uimg

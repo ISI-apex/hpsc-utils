@@ -1,0 +1,8 @@
+# NOTE: this lib profile is not compatible with lib-trch-bm-nvmem,
+# because this lib profile puts a "Simple File System" populated with
+# test data (for RTEMS tests) at a fixed location where the RTEMS tests
+# look for the SFS. This location overlaps with content for NV mem boot added
+# by the lib-trch-bm-nvmem profile.
+
+# This offset must match HPSC_TEST_SFS_OFFSET in hpsc-rtems source code.
+lsio.smc.sram.0   test-sfs    0x20100       $PROF_BLD/rtps/r52/test.sfs.mem.bin
