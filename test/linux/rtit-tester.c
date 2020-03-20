@@ -17,6 +17,7 @@ static void usage(const char *prog)
 int main(int argc, char **argv)
 {
     if (!(argc == 2 || argc == 3)) {
+        fprintf(stderr, "error: invalid arguments\n");
         usage(argv[0]);
         return 1;
     }
