@@ -553,6 +553,26 @@ The platform-specific artifacts for Zebu in `prof/PROFILE/bld/zebu` are:
 * `preload.zebu.mem.map`: directives for loading images into memories for Zebu
    TCL scripts
 
+Troubleshooting
+===============
+
+This section describes some tips for diagnosing issues. For bruteforce
+debugging in GDB and tracing, read the sections after this section.
+
+Systemd boot
+------------
+
+If Linux boot fails during systemd startup, verbose log can be obtained
+by passing the following boot arguments to the kernel:
+
+    systemd.log_level=debug systemd.log_target=console
+
+To pass boot arguments to the kernel, append them to the `bootargs` variable in
+U-boot environment file. For example, you can temporarily edit the u-boot
+environment overlay in `lib-hpps-linux` profile in
+`ssw/hpsc-utils/prof/lib-hpps-linux/hpps/u-boot.env` or create a separate
+overlay in your profile.
+
 Tracing
 =======
 
