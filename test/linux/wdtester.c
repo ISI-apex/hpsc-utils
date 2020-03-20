@@ -7,6 +7,7 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 #include <linux/watchdog.h>
 
@@ -48,19 +49,25 @@ int main(int argc, char** argv) {
     int fd;
     int do_write;
     const char* fname;
+    time_t time_started;
+    int time_to_run = -1; /* seconds, -1 means no limit */
     if (argc < 3) {
-        fprintf(stderr, "Usage: %s <device_file> <do_writes>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <device_file> <do_writes> [<time_sec>]\n", argv[0]);
         return EINVAL;
     }
     fname = argv[1];
     do_write = atoi(argv[2]);
+    if (argc >= 4)
+        time_to_run = atoi(argv[3]);
     signal(SIGINT, shandle);
     if ((fd = open(fname, O_WRONLY | O_CLOEXEC)) < 0) {
         perror(fname);
         return errno;
     }
     print_ioctls(fd);
-    while (running) {
+    time_started = time(NULL);
+    while (running &&
+            (time_to_run < 0 || time(NULL) - time_started < time_to_run)) {
         if (do_write) {
             printf("Kicking watchdog: yes\n");
             fflush(stdout);
