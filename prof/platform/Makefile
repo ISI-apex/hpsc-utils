@@ -105,7 +105,7 @@ $(PROF_BLD)/qemu/preload.mem.args: $(PROF_BLD)/preload.exp.mem.map $(PROF_BLD)/q
 
 $(PROF_BLD)/qemu/preload.mem.args.dep: $(PROF_BLD)/qemu/preload.mem.args ;
 include $(PROF_BLD)/qemu/preload.mem.args.dep
-$(ARTS_qemu): $(PROF_BLD)/qemu/mem.ini
+$(ARTS_qemu): $(PROF_BLD)/qemu/mem.ini $(PROF_BLD)/qemu/env.sh
 $(PROF_BLD)/qemu: $(ARTS_qemu)
 
 # For privatizing image files subject to overwriting during run into run directory
@@ -117,7 +117,7 @@ QEMU_ARGS=\
 	-e $(abspath $(PROF_BLD)/qemu/env.sh) \
 	-a $(abspath $(PROF_BLD)/qemu/preload.mem.args) \
 
-$(PROF_RUN)/qemu: $(PROF_BLD)/qemu/preload.mem.args $(PROF_BLD)/qemu/env.sh
+$(PROF_RUN)/qemu: $(PROF_BLD)/qemu/preload.mem.args
 $(PROF_RUN)/qemu: PROF_RUN_ARGS+=$(QEMU_ARGS)
 
 # Zebu rules for building and preloading images from cross-platform memory map
