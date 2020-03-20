@@ -35,6 +35,14 @@ HPPS_LINUX_SHUTDOWN_TIME_S = 400
 class SSHTester:
     testers = [] # derived classes override
 
+    def run_cmd_on_host(self, hostname, cmd):
+        out = subprocess.run("ssh " + hostname + " " + cmd,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                universal_newlines=False, shell=True)
+        assert out.returncode == 0, eval(pytest.run_fail_str)
+        return out, out.stdout.decode('ascii')
+
+    # legacy, superceded by run_cmd_on_host
     def run_tester_on_host(self, hostname, tester_num, tester_pre_args,
             tester_post_args):
         tester_remote_path = "/opt/hpsc-utils/" + self.testers[tester_num]
@@ -42,7 +50,7 @@ class SSHTester:
                 [tester_remote_path] + tester_post_args,
                 universal_newlines=False, stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE)
-        return out
+        return out, out.stdout.decode('ascii')
 
 # Track step by step, so that if it fails, we quickly get info about where
 hpps_linux_boot_steps = [
@@ -114,7 +122,7 @@ class TestDMA(SSHTester):
     @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S + HPPS_LINUX_SSH_TIME_S)
     @pytest.mark.parametrize('buf_size', [8192, 16384, -1])
     def test_test_buffer_size(self, qemu_instance_per_mdl, host, buf_size):
-        out = self.run_tester_on_host(host, 0, [], ['-b', str(buf_size)])
+        out, output = self.run_tester_on_host(host, 0, [], ['-b', str(buf_size)])
         if buf_size > 0:
             assert out.returncode == 0, eval(pytest.run_fail_str)
         else:
@@ -123,7 +131,7 @@ class TestDMA(SSHTester):
     @pytest.mark.parametrize('threads_per_chan', [1, 2, 4, -1])
     def test_threads_per_channel(self, qemu_instance_per_mdl, host,
             threads_per_chan):
-        out = self.run_tester_on_host(host, 0, [], ['-T',
+        out, output = self.run_tester_on_host(host, 0, [], ['-T',
             str(threads_per_chan)])
         if threads_per_chan > 0:
             assert out.returncode == 0, eval(pytest.run_fail_str)
@@ -132,7 +140,7 @@ class TestDMA(SSHTester):
 
     @pytest.mark.parametrize('iterations', [1, 2, -1])
     def test_iterations(self, qemu_instance_per_mdl, host, iterations):
-        out = self.run_tester_on_host(host, 0, [], ['-i', str(iterations)])
+        out, output = self.run_tester_on_host(host, 0, [], ['-i', str(iterations)])
         if iterations > 0:
             assert out.returncode == 0, eval(pytest.run_fail_str)
         else:
@@ -140,7 +148,7 @@ class TestDMA(SSHTester):
 
     @pytest.mark.parametrize('timeouts', [1500, 3000, -1])
     def test_timeouts(self, qemu_instance_per_mdl, host, timeouts):
-        out = self.run_tester_on_host(host, 0, [], ['-t', str(timeouts)])
+        out, output = self.run_tester_on_host(host, 0, [], ['-t', str(timeouts)])
         if timeouts > 0:
             assert out.returncode == 0, eval(pytest.run_fail_str)
         else:
@@ -148,11 +156,11 @@ class TestDMA(SSHTester):
 
     @pytest.mark.parametrize('chan', ["nochan"])
     def test_dma_channels(self, qemu_instance_per_mdl, host, chan):
-        out = self.run_tester_on_host(host, 0, [], ['-c', chan])
+        out, output = self.run_tester_on_host(host, 0, [], ['-c', chan])
         if chan == "nochan":
             assert out.returncode == 5, eval(pytest.run_fail_str)
 
-class TestCPUHotplug(SSHTester):
+class TestCPUHotplug:
     @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S)
     @pytest.mark.parametrize('core_num', range(1,8))
     def test_hotplug(self, hpps_serial, core_num):
@@ -176,21 +184,19 @@ class TestIntAffinity(SSHTester):
     @pytest.mark.parametrize('core_num', range(8))
     def test_interrupt_affinity_on_each_core(self, qemu_instance_per_mdl, host,
             core_num):
-        out = self.run_tester_on_host(host, 0, [], ['-c', str(core_num)])
+        out, output = self.run_tester_on_host(host, 0, [], ['-c', str(core_num)])
         assert out.returncode == 0, eval(pytest.run_fail_str)
 
 class TestMailboxMultiSystem(SSHTester):
+    testers = ['mbox-server-tester']
+
     @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S + HPPS_LINUX_SSH_TIME_S)
     @pytest.mark.parametrize('core_num', range(8))
     def test_rtps_hpps(self, rtps_serial, host, core_num):
-        tester_remote_path = '/opt/hpsc-utils/mbox-server-tester'
-
         rtps_serial.sendline('test_mbox_rtps_hpps 3 4')
         assert(rtps_serial.expect('TEST: test_mbox_rtps_hpps: begin') == 0)
 
-        out = subprocess.run(['ssh', host] + [tester_remote_path] + ['-c',
-            str(core_num)], universal_newlines=False, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+        out, output = self.run_tester_on_host(host, 0, [], ['-c', str(core_num)])
 
         assert(rtps_serial.expect('TEST: test_mbox_rtps_hpps: success') == 0)
 
@@ -207,7 +213,7 @@ class TestMailbox(SSHTester):
     @pytest.mark.parametrize('notif', ['none', 'select', 'poll', 'epoll'])
     def test_hpps_to_trch_for_each_notification_and_core(self,
             qemu_instance_per_mdl, host, core_num, notif):
-        out = self.run_tester_on_host(host, 0, [], ['-n', notif, '-c',
+        out, output = self.run_tester_on_host(host, 0, [], ['-n', notif, '-c',
             str(core_num)])
         assert out.returncode == 0, eval(pytest.run_fail_str)
 
@@ -215,7 +221,7 @@ class TestMailbox(SSHTester):
     @pytest.mark.parametrize('notif', ['none', 'select', 'poll', 'epoll'])
     def test_hpps_to_rtps_for_each_notification_and_core(self,
             qemu_instance_per_mdl, host, core_num, notif):
-        out = self.run_tester_on_host(host, 0, [], ['-n', notif, '-o',
+        out, output = self.run_tester_on_host(host, 0, [], ['-n', notif, '-o',
             '/dev/mbox/1/mbox0', '-i', '/dev/mbox/1/mbox1', '-c',
             str(core_num)])
         assert out.returncode == 0, eval(pytest.run_fail_str)
@@ -223,15 +229,15 @@ class TestMailbox(SSHTester):
     @pytest.mark.parametrize('core_num', range(8))
     def test_invalid_outbound_mailbox_for_each_core(self,
             qemu_instance_per_mdl, host, core_num):
-        out = self.run_tester_on_host(host, 0, [], ['-c', str(core_num), '-o',
+        out, output = self.run_tester_on_host(host, 0, [], ['-c', str(core_num), '-o',
             '32'])
         assert out.returncode == 1, eval(pytest.run_fail_str)
 
     @pytest.mark.parametrize('core_num', range(8))
     def test_invalid_inbound_mailbox_for_each_core(self, qemu_instance_per_mdl,
             host, core_num):
-        out = self.run_tester_on_host(host, 0, [], ['-c', str(core_num), '-i',
-            '32'])
+        out, output = self.run_tester_on_host(host, 0, [], ['-c', str(core_num),
+            '-i', '32'])
         assert out.returncode == 1, eval(pytest.run_fail_str)
 
     # Verify that mboxtester fails with the correct exit code when a timeout
@@ -240,7 +246,7 @@ class TestMailbox(SSHTester):
     @pytest.mark.parametrize('core_num', range(8))
     def test_early_timeout_for_each_core(self, qemu_instance_per_mdl, host,
             core_num):
-        out = self.run_tester_on_host(host, 0, [], ['-c', str(core_num), '-t',
+        out, output = self.run_tester_on_host(host, 0, [], ['-c', str(core_num), '-t',
             '0'])
         assert out.returncode == 22, eval(pytest.run_fail_str)
 
@@ -248,17 +254,17 @@ class TestMailbox(SSHTester):
     # write-read followed by core 1 doing another write-read using the same
     # mailbox
     def test_multiple_cores_same_mbox(self, qemu_instance_per_mdl, host):
-        out = self.run_tester_on_host(host, 1, [], ['-C', '0', '-c', '1'])
+        out, output = self.run_tester_on_host(host, 1, [], ['-C', '0', '-c', '1'])
         assert out.returncode == 0, eval(pytest.run_fail_str)
 
     def test_multiple_cores_same_mbox_invalid_CPU1(self, qemu_instance_per_mdl,
             host):
-        out = self.run_tester_on_host(host, 1, [], ['-C', '-1', '-c', '1'])
+        out, output = self.run_tester_on_host(host, 1, [], ['-C', '-1', '-c', '1'])
         assert out.returncode == 1, eval(pytest.run_fail_str)
 
     def test_multiple_cores_same_mbox_invalid_CPU2(self, qemu_instance_per_mdl,
             host):
-        out = self.run_tester_on_host(host, 1, [], ['-C', '0', '-c', '9'])
+        out, output = self.run_tester_on_host(host, 1, [], ['-C', '0', '-c', '9'])
         assert out.returncode == 2, eval(pytest.run_fail_str)
 
 class TestSharedMem(SSHTester):
@@ -271,28 +277,23 @@ class TestSharedMem(SSHTester):
         num_write_bytes = 32
 
         # get a list of shared memory regions
-        out = subprocess.run(['ssh', host, "ls", shm_dir],
-                universal_newlines=False, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
-        assert out.returncode == 0, eval(pytest.run_fail_str)
-        output = out.stdout.decode('ascii')
+        out, output = self.run_cmd_on_host(host, "ls " + shm_dir)
         shm_regions = output.splitlines()
 
         for shm_region in shm_regions:
             # write 0xff to each of num_write_bytes consecutive bytes of each shm_region
-            out = self.run_tester_on_host(host, 0, [], ['-f', shm_dir +
+            out, output = self.run_tester_on_host(host, 0, [], ['-f', shm_dir +
                 shm_region, '-s', str(num_write_bytes), '-w', '0xff'])
             assert out.returncode == 0, eval(pytest.run_fail_str)
             # now perform a read to confirm the write
-            out = self.run_tester_on_host(host, 0, [], ['-f', shm_dir +
+            out, output = self.run_tester_on_host(host, 0, [], ['-f', shm_dir +
                 shm_region, '-s', str(num_write_bytes), '-r'])
-            output = out.stdout.decode('ascii')
             read_contents = (re.search(r"Start:(.+)$", output).group(0))[6:]
             assert out.returncode == 0, eval(pytest.run_fail_str)
             assert read_contents == ' 0xff' * num_write_bytes
 
     def test_hpps_to_trch(self, qemu_instance_per_mdl, host):
-        out = self.run_tester_on_host(host, 1, [], ['-i',
+        out, output = self.run_tester_on_host(host, 1, [], ['-i',
             '/dev/hpsc_shmem/region0', '-o', '/dev/hpsc_shmem/region1'])
         assert out.returncode == 0, eval(pytest.run_fail_str)
 
@@ -302,13 +303,11 @@ class TestRTITimer(SSHTester):
     @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S + HPPS_LINUX_SSH_TIME_S)
     @pytest.mark.parametrize('core_num', range(8))
     def test_rti_timer_on_each_core(self, qemu_instance_per_mdl, host, core_num):
-        out = self.run_tester_on_host(host, 0, ['taskset', '-c',
+        out, output = self.run_tester_on_host(host, 0, ['taskset', '-c',
             str(core_num)], ["/dev/rti_timer" + str(core_num), str(2000)])
         assert out.returncode == 0, eval(pytest.run_fail_str)
 
-class TestWDTimer(SSHTester):
-    testers = ["wdtester"]
-
+class TestWDTimer:
     # both stages, set in hpsc-baremetal/trch/watchdog.c
     WD_TIMEOUT_SEC = 5 + 400
 
@@ -362,9 +361,8 @@ class TestSRAM(SSHTester):
             HPPS_LINUX_SHUTDOWN_TIME_S)
     def test_non_volatility(self, hpps_serial, host):
         # increment the first 100 elements of the SRAM array by 2
-        out = self.run_tester_on_host(host, 0, [], ["-s", "100", "-i", "2"])
+        out, output = self.run_tester_on_host(host, 0, [], ["-s", "100", "-i", "2"])
         assert out.returncode == 0, eval(pytest.run_fail_str)
-        output = out.stdout.decode('ascii')
         sram_before_reboot = re.search(r'Latest SRAM contents:(.+)',
                 output, flags=re.DOTALL).group(1)
 
@@ -372,9 +370,8 @@ class TestSRAM(SSHTester):
 
         # after the reboot, read the SRAM contents to verify that they haven't
         # changed
-        out = self.run_tester_on_host(host, 0, [], ["-s", "100"])
+        out, output = self.run_tester_on_host(host, 0, [], ["-s", "100"])
         assert out.returncode == 0, eval(pytest.run_fail_str)
-        output = out.stdout.decode('ascii')
         sram_after_reboot = re.search(r'Latest SRAM contents:(.+)', output,
                 flags=re.DOTALL).group(1)
         assert(sram_before_reboot == sram_after_reboot), \
@@ -382,5 +379,5 @@ class TestSRAM(SSHTester):
             ", while SRAM array after reboot was: " + sram_after_reboot
 
         # return the SRAM contents to their original state
-        out = self.run_tester_on_host(host, 0, [], ["-s", "100", "-i", "-2"])
+        out, output = self.run_tester_on_host(host, 0, [], ["-s", "100", "-i", "-2"])
         assert out.returncode == 0, eval(pytest.run_fail_str)
