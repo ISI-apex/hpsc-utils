@@ -12,4 +12,4 @@ lsio.smc.sram.3   trch-bm     0x00000100    $PROF_BLD/trch/bm/trch.bin
 # Leave enough space for trch.bin
 lsio.smc.sram.0   syscfg      0x00020000	$PROF_BLD/trch/syscfg.bin
 # Must match sfs_offset in syscfg.ini (file path overriden by other profiles)
-lsio.smc.sram.0   boot-sfs    0x00020100	-
+lsio.smc.sram.0   boot-sfs    0x00020400	-
