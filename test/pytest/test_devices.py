@@ -108,10 +108,9 @@ def hpps_linux_reboot(conn):
     # currently HPPS Linux does not activate the watchdog by default, so
     # we need to activate it before issuing the 'shutdown' command.
     conn.sendline("taskset -c 0 /opt/hpsc-utils/wdtester " + \
-            "/dev/watchdog0 0 1") # 1=exit
+            "/dev/watchdog0 0 0") # 0=do not kick, 0=open then run for zero seconds
 
     conn.sendline("shutdown -h now")
-
     expect_hpps_linux_boot(conn)
     hpps_linux_login(conn)
 
@@ -312,22 +311,29 @@ class TestWDTimer:
     WD_TIMEOUT_SEC = 5 + 400
 
     # Each core starts its own watchdog timer and then kicks it.
-    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S + WD_TIMEOUT_SEC)
+    @pytest.mark.timeout(2 * HPPS_LINUX_BOOT_TIME_S + WD_TIMEOUT_SEC)
     @pytest.mark.parametrize('core_num', range(8))
-    def test_kicked_watchdog_on_each_core(self, hpps_serial_per_fnc, host,
-            core_num):
-        hpps_serial_per_fnc.sendline("taskset -c " + str(core_num) + " " +
-                "/opt/hpsc-utils/wdtester /dev/watchdog" + str(core_num) + " 1")
+    def test_kicked_watchdog_on_each_core(self, hpps_serial, core_num):
 
-        time_wd_enabled = time.time()
-        while time.time() - time_wd_enabled < WD_TIMEOUT_SEC * 1.25: # 25% margin
-            idx = hpps_serial_per_fnc.expect(
-                    ["Kicking watchdog: yes", hpps_linux_boot_steps[0]])
-            assert idx == 0, "unexpected reboot of HPPS"
-            time.sleep(2)
-        # at this point, the fixture cleanup will terminate Qemu (we
-        # cannot reuse this Qemu for the other core tests, because
-        # once WDT device is opened, it needs to be kicked).
+        do_kick = 1
+        time_to_run = self.WD_TIMEOUT_SEC * 1.10 # +10% margin
+        hpps_serial.sendline("taskset -c " + str(core_num) + " " +
+                "/opt/hpsc-utils/wdtester /dev/watchdog" + str(core_num) +
+                " " + str(do_kick) +  " " + str(time_to_run))
+
+        idx = hpps_serial.expect(["Kicking watchdog: yes",
+                                    hpps_linux_boot_steps[0]])
+        assert idx == 0, "unexpected reboot of HPPS"
+
+        # Wait for indication from wdtester that the time interval has elapsed
+        idx = hpps_serial.expect(["Stopping", hpps_linux_boot_steps[0]])
+        assert idx == 0, "unexpected reboot of HPPS"
+
+        # The test is successful at this point, but we need to reboot
+        # Linux, because WD cannot be deactivated (and we don't want
+        # to keep kicking it, because it pollutes the state for the other
+        # tests, including the instances of this test for the other cores).
+        hpps_linux_reboot(hpps_serial)
 
     # Each core starts its own watchdog timer but does not kick it.
     #
@@ -337,20 +343,20 @@ class TestWDTimer:
     # this will almost certainly corrupt NAND JFFS2 filesystem (observed).
     @pytest.mark.timeout(2 * HPPS_LINUX_BOOT_TIME_S + HPPS_LINUX_SHUTDOWN_TIME_S)
     @pytest.mark.parametrize('core_num', range(8))
-    def test_unkicked_watchdog_on_each_core(self, hpps_serial_per_fnc, host,
-            core_num):
-        hpps_serial_per_fnc.sendline("taskset -c " + str(core_num) + " " +
-            "/opt/hpsc-utils/wdtester /dev/watchdog" + str(core_num) + " 0")
+    def test_unkicked_watchdog_on_each_core(self, hpps_serial, core_num):
+        do_kick = 0
+        time_to_run = 0 # seconds
+        hpps_serial.sendline("taskset -c " + str(core_num) + " " +
+            "/opt/hpsc-utils/wdtester /dev/watchdog" + str(core_num) +
+            " " + str(do_kick) +  " " + str(time_to_run))
 
-        # the expect calls below should return a 0 on a successful match
-        assert(hpps_serial_per_fnc.expect("Kicking watchdog: no") == 0)
-
-        hpps_serial_per_fnc.expect('HPSC WDT: stage 1 interrupt received ' + \
+        hpps_serial.expect('HPSC WDT: stage 1 interrupt received ' + \
                 'for cpu ' + str(core_num) + ' on cpu ' + str(core_num))
-        hpps_serial_per_fnc.expect('hpsc_monitor_wdt: initiating poweroff')
+        hpps_serial.expect('hpsc_monitor_wdt: initiating poweroff')
 
-        expect_hpps_linux_shutdown(hpps_serial_per_fnc)
-        expect_hpps_linux_boot(hpps_serial_per_fnc)
+        expect_hpps_linux_shutdown(hpps_serial)
+        expect_hpps_linux_boot(hpps_serial)
+        hpps_linux_login(hpps_serial)
 
 class TestSRAM(SSHTester):
     testers = ["sram-tester"]
