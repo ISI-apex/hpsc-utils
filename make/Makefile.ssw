@@ -1058,11 +1058,18 @@ PROF_MODS := $(foreach m,$(MODULES),$(if $(filter $(B_$(m):=/%),$(PROF_ARTS)),$(
 $(PROF_HOME): $(PROF_BLD)
 $(PROF_BLD): $(PROF_ARTS)
 
-# Deep clean that invokes nested builds (unless overriden with DEEP=0), to
-# clean artifacts in bld/ (without invoking nested build at all -- not cleaning
-# it) use the $(PROF_BLD)/bld/clean target instead
-$(PROF_HOME)/clean: $(if $(DEEP),$(foreach m,$(PROF_MODS),$(B_$(m))/clean)) \
-	$(PROF_BLD)/clean $(PROF_SRC)/clean $(PROF_RUN)/clean $(PROF_PROF)/clean
+# Deep clean the nested builds; handle both the in-tree (invoke the nested
+# clean target in-tree, and clean the $(PROF_BLD)/$module destination
+# directory) and out-of-tree modules (clean the $(PROF_BLD)/$module directory).
+$(PROF_HOME)/clean/nested: $(foreach m,$(PROF_MODS),$(B_$(m))/clean)
+	$(foreach mod,$(MODULES),\
+		[ ! -d "$(B_$(mod))" ] || find "$(B_$(mod))" -mindepth 1 -delete$(NL))
+.PHONY: $(PROF_HOME)/clean/nested
+
+# Deep clean that invokes nested builds and cleans artifacts in bld/. To not
+# invoke nested builds at all use $(PROF_BLD)/clean target.
+$(PROF_HOME)/clean: $(PROF_HOME)/clean/nested $(PROF_BLD)/clean \
+	$(PROF_SRC)/clean $(PROF_RUN)/clean $(PROF_PROF)/clean
 
 ## Some artifacts are very time-consuming to build, so require
 # the user to set a variable to allow cleaning them: CLEAN="group group ..."
@@ -1088,6 +1095,13 @@ ancestor-re=$(call ancestor-re-f,$(subst /, ,$(1)))
 # To guard costly artifacts, exclude paths in groups not given in CLEAN variable
 LOCKED_PATHS=$(foreach g,$(filter-out $(CLEAN),$(CLEAN_GROUPS)),$(foreach p,$(CLEAN_$(g)),$(p)))
 
+# We don't remove build directories of nested modules in oder to keep this
+# clean target shallow for nested modules that are built out-of-tree. Modules
+# that are built in-tree, generally copy the artifact into their
+# $(PROF_BLD)/$(B_module) directory, and there's no point cleaning it either,
+# during the shallow clean.
+MODULE_BLD_PATHS=$(foreach mod,$(MODULES),$(B_$(mod)))
+
 $(PROF_BLD)/clean:
 	@echo -e ' $@:   locked clean groups: $(filter-out $(CLEAN),$(CLEAN_GROUPS))\n' \
 			  '$@: unlocked clean groups: $(filter $(CLEAN),$(CLEAN_GROUPS))\n' \
@@ -1095,7 +1109,10 @@ $(PROF_BLD)/clean:
 	[ ! -d $(@D) ] || \
 		find "$(@D)" \
 			\( \( -false $(foreach p,$(LOCKED_PATHS),\$(NL) -o -path '$(p)') \) \
-				-printf '$@: path locked (to remove add its group to CLEAN): %p\n' \
+				-printf 'clean: path locked (to remove add its group to CLEAN): %p\n' \
+				-prune \) \
+			-o \( \( -false $(foreach p,$(MODULE_BLD_PATHS),\$(NL) -o -path '$(p)') \) \
+				-printf 'clean: build directory of a nested module kept (can clean it by name): %p\n' \
 				-prune \) \
 			-o \( -false \
 				$(foreach p,$(LOCKED_PATHS),\$(NL) -o -regex '$(call ancestor-re,$(p))') \
