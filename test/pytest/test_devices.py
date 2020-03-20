@@ -19,6 +19,9 @@ import time
 
 HPPS_LINUX_BOOT_TIME_S = 400
 
+# First connection over ssh takes a long time
+HPPS_LINUX_SSH_TIME_S = 100
+
 # NOTE: between these steps there's a ~5 minute delay where Qemu has 0% CPU and
 # 0% disk utilization (measure on fresh NAND image!); host disk utilization is
 # not saying much because all data is probably in DRAM page caches at this point.
@@ -91,7 +94,7 @@ def expect_hpps_linux_shutdown(conn):
 class TestDMA(SSHTester):
     testers = ["dma-tester.sh"]
 
-    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S)
+    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S + HPPS_LINUX_SSH_TIME_S)
     @pytest.mark.parametrize('buf_size', [8192, 16384, -1])
     def test_test_buffer_size(self, qemu_instance_per_mdl, host, buf_size):
         out = self.run_tester_on_host(host, 0, [], ['-b', str(buf_size)])
@@ -152,7 +155,7 @@ class TestCPUHotplug(SSHTester):
 class TestIntAffinity(SSHTester):
     testers = ["interrupt-affinity-tester.sh"]
 
-    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S)
+    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S + HPPS_LINUX_SSH_TIME_S)
     @pytest.mark.parametrize('core_num', range(8))
     def test_interrupt_affinity_on_each_core(self, qemu_instance_per_mdl, host,
             core_num):
@@ -160,7 +163,7 @@ class TestIntAffinity(SSHTester):
         assert out.returncode == 0, eval(pytest.run_fail_str)
 
 class TestMailboxMultiSystem(SSHTester):
-    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S)
+    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S + HPPS_LINUX_SSH_TIME_S)
     @pytest.mark.parametrize('core_num', range(8))
     def test_rtps_hpps(self, rtps_serial, host, core_num):
         tester_remote_path = '/opt/hpsc-utils/mbox-server-tester'
@@ -182,7 +185,7 @@ class TestMailbox(SSHTester):
 
     # Verify that mboxtester works with the process pinned separately to each
     # HPPS core.
-    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S)
+    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S + HPPS_LINUX_SSH_TIME_S)
     @pytest.mark.parametrize('core_num', range(8))
     @pytest.mark.parametrize('notif', ['none', 'select', 'poll', 'epoll'])
     def test_hpps_to_trch_for_each_notification_and_core(self,
@@ -244,7 +247,7 @@ class TestMailbox(SSHTester):
 class TestSharedMem(SSHTester):
     testers = ["shm-standalone-tester", "shm-tester"]
 
-    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S)
+    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S + HPPS_LINUX_SSH_TIME_S)
     def test_write_then_read_on_each_shm_region(self, qemu_instance_per_mdl,
             host):
         shm_dir = '/dev/hpsc_shmem/'
@@ -279,7 +282,7 @@ class TestSharedMem(SSHTester):
 class TestRTITimer(SSHTester):
     testers = ["rtit-tester"]
 
-    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S)
+    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S + HPPS_LINUX_SSH_TIME_S)
     @pytest.mark.parametrize('core_num', range(8))
     def test_rti_timer_on_each_core(self, qemu_instance_per_mdl, host, core_num):
         out = self.run_tester_on_host(host, 0, ['taskset', '-c',
@@ -336,8 +339,8 @@ class TestSRAM(SSHTester):
 
     # This SRAM test will modify an array in SRAM, reboot HPPS (using a
     # watchdog timeout), then check that the SRAM array is the same.
-    # Since this test will boot QEMU, then reboot QEMU, it is given more time.
-    @pytest.mark.timeout(2 * HPPS_LINUX_BOOT_TIME_S)
+    @pytest.mark.timeout(2 * HPPS_LINUX_BOOT_TIME_S + HPPS_LINUX_SSH_TIME_S + \
+            HPPS_LINUX_SHUTDOWN_TIME_S)
     def test_non_volatility(self, hpps_serial_per_fnc, host): # TODO: per_mdl shoud work
         # increment the first 100 elements of the SRAM array by 2, then reboot
         # HPPS
