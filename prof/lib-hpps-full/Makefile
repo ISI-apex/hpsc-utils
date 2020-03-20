@@ -19,3 +19,4 @@ include $(CONF)/lib-hpps-linux-msg-shmem/Makefile
 include $(CONF)/lib-hpps-linux-shmem/Makefile
 include $(CONF)/lib-hpps-linux-mbox/Makefile
 include $(CONF)/lib-hpps-linux-smp8/Makefile
+include $(CONF)/lib-hpps-linux-notif/Makefile
