@@ -472,3 +472,22 @@ class TestParallelScaling(SSHTester):
         print("\nNAS EP class " + self.nas_ep_class + " run times for " +
                 str(executed_thread_counts) + " OMP threads are " +
                 str(executed_cpu_times) + " seconds respectively.")
+
+class TestRTMMU:
+    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S) # actually, need only TRCH
+    @pytest.mark.skip(reason="not compatible with test harness")
+    # TODO: This test is but one out of the baremetal tests suite: a solution
+    # to integrate the those tests with the pytest report is needed. We can no
+    # longer scan the output with pexpect because the output has already breen
+    # consumed by the fixture as it was trying to boot all subsystems up to the
+    # shell (and we had to consume it, because buffering is finite and if the
+    # buffer fills up, then Qemu CPU thread stalls). A simple approach is to
+    # save the output (effectively "tee" the log from pexpect), make it
+    # availabe through a property/method on the fixture, and scan through that
+    # in any test. Thus, we could have a test report per test.  But note that
+    # since the tests panic, this would mostly just check that the test was
+    # enabled, which is of value.
+    def test_rt_mmu(trch_serial_per_fnc):
+        assert(trch_serial_per_fnc.expect('TEST: rt mmu: map-write-read: success') == 0)
+        assert(trch_serial_per_fnc.expect('TEST: rt mmu: write-map-read: success') == 0)
+        assert(trch_serial_per_fnc.expect('TEST: rt mmu: mapping swap: success') == 0)
