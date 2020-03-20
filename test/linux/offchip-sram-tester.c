@@ -6,23 +6,35 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 
-#define FILEPATH "/tmp/mmapped.bin"
 #define NUMINTS  (1024)
 #define FILESIZE (NUMINTS * sizeof(int))
 #define SRAM_ADDR 0x600000000
-#define READ_ONLY 1
 
-int main()
+// TODO: These were used for NOR Flash testing on HAPS, but they
+// are out of range at least for the current Qemu NOR model configuration
+// (512MB?); also need to put this under cli arguments.
+// #define READ_MIDDLE
+// #define READ_END
+
+int main(int argc, char **argv)
 {
     int i;
     int fd;
     int *map;  /* mmapped array of int's */
     off_t addr;
-    int prot = PROT_READ | (!(READ_ONLY) ? PROT_WRITE : 0);
-#if !READ_ONLY
+    int prot;
     int buf[NUMINTS];
     int error;
-#endif /* !READ_ONLY */
+    int do_writes;
+
+    if (argc != 2) {
+	fprintf(stderr, "error: invalid arguments\n");
+	fprintf(stderr, "usage: [do_writes]\n");
+	fprintf(stderr, "    where do_writes is 0 (read-only test) or 1\n");
+	exit(1);
+    }
+    do_writes = atoi(argv[1]);
+    prot = PROT_READ | (do_writes ? PROT_WRITE : 0);
 
     /* Open a file for writing.
      *  - Creating the file if it doesn't exist.
@@ -53,32 +65,30 @@ int main()
     for (i = 0; i < NUMINTS; ++i) {
         if (i % 64 == 0) printf("\n");
 	printf("0x%X, ", map[i]);
-#if !READ_ONLY
         buf[i] = map[i];
-#endif /* !READ_ONLY */
     }
     printf("\n");
 
-#if !READ_ONLY
-    printf("Now writting back ...\n");
-    for (i = 0; i < NUMINTS; ++i) {
-	map[i] = map[i]+1;
-    }
+    if (do_writes) {
+	printf("Now writting back ...\n");
+	for (i = 0; i < NUMINTS; ++i) {
+	    map[i] = map[i]+1;
+	}
 
-    printf("after memcpy\n");
-    printf(" ----- New SRAM content -----");
-    for (i = error = 0; i < NUMINTS; ++i) {
-        if (i % 64 == 0) printf("\n");
-	printf("0x%X, ", map[i]);
-        if (buf[i] + 1 != map[i]) error++;
-    }
-    printf("\n");
+	printf("after memcpy\n");
+	printf(" ----- New SRAM content -----");
+	for (i = error = 0; i < NUMINTS; ++i) {
+	    if (i % 64 == 0) printf("\n");
+	    printf("0x%X, ", map[i]);
+	    if (buf[i] + 1 != map[i]) error++;
+	}
+	printf("\n");
 
-    if (error)
-        printf("FAIL: there are %d errors\n", error);
-    else
-        printf("SUCCESS\n");
-#endif /* !READ_ONLY */
+	if (error)
+	    printf("FAIL: there are %d errors\n", error);
+	else
+	    printf("SUCCESS\n");
+    }
 
     if (munmap(map, FILESIZE) == -1) {
       perror("Error un-mmapping the file");
@@ -86,6 +96,7 @@ int main()
     }
     close(fd);
 
+#ifdef READ_MIDDLE
     fd = open("/dev/mem", O_RDWR);
     if (fd == -1) {
 	perror("Error opening file for writing");
@@ -114,7 +125,9 @@ int main()
 	/* Decide here whether to close(fd) and exit() or not. Depends... */
     }
     close (fd);
+#endif /* READ_MIDDLE */
 
+#ifdef READ_END
     fd = open("/dev/mem", O_RDWR);
     if (fd == -1) {
 	perror("Error opening file for writing");
@@ -143,7 +156,6 @@ int main()
     }
 
     close(fd);
+#endif /* READ_END */
     return 0;
 }
-
-
