@@ -636,6 +636,76 @@ $(B_rtps-r52-bm)/rtps.dbg.elf \
 							$(call mod-prereq,rtps-r52-bm) | $(B_rtps-r52-bm)/
 	$(COPY) $< $@
 
+MODULES += rtps-r52-rtems
+L_rtps-r52-rtems := rtps/r52/rtems
+B_rtps-r52-rtems := $(PROF_BLD)/rtps/r52/rtems
+S_rtps-r52-rtems := $(call src,rtps-r52-rtems)
+
+RTPS_R52_RTEMS_TARGET := arm-rtems5
+RTPS_R52_RTEMS_BSP := gen_r52_qemu
+
+RTPS_R52_RTEMS_SYSROOT := sysroot
+RTPS_R52_RTEMS_INSTALL_PATH := $(RTPS_R52_RTEMS_SYSROOT)/$(RTPS_R52_RTEMS_TARGET)/$(RTPS_R52_RTEMS_BSP)
+
+# required for sleep functions to work when running in QEMU
+RTPS_R52_RTEMS_VARS+=CLOCK_DRIVER_USE_FAST_IDLE=0
+# prevents RTEMS from crashing QEMU on failures
+RTPS_R52_RTEMS_VARS+=BSP_RESET_BOARD_AT_EXIT=0
+
+$(S_rtps-r52-rtems)/configure.ac: $(call src-ok,rtps-r52-rtems) ;
+
+# sb-bootsrap is not installed, so SDK can't add it to PATH
+$(S_rtps-r52-rtems)/configure: $(S_rtps-r52-rtems)/configure.ac
+	cd $(@D) && $(RTEMS_SOURCE_BUILDER)/sb-bootstrap
+$(B_rtps-r52-rtems)/build/config.status: $(S_rtps-r52-rtems)/configure \
+	| $(B_rtps-r52-rtems)/build/ $(B_rtps-r52-rtems)/$(RTPS_R52_RTEMS_SYSROOT)/
+	cd $(@D) && $(RTPS_R52_RTEMS_VARS) $(abspath $(S_rtps-r52-rtems)/configure) \
+		--prefix="$(abspath $(B_rtps-r52-rtems)/$(RTPS_R52_RTEMS_SYSROOT))" \
+		--target=$(RTPS_R52_RTEMS_TARGET) --enable-rtemsbsp=$(RTPS_R52_RTEMS_BSP) \
+		--disable-networking
+$(B_rtps-r52-rtems): \
+	$(B_rtps-r52-rtems)/build/config.status
+	$(MAKE) -C $(B_rtps-r52-rtems)/build $(RTPS_R52_RTEMS_VARS) install
+$(B_rtps-r52-rtems)/build/clean:
+	$(MAKE) -C $(@D) clean
+$(B_rtps-r52-rtems)$(RTPS_R52_RTEMS_SYSROOT)/clean:
+	rm -rf $(@D)
+$(B_rtps-r52-rtems)/clean:
+	rm -rf $(B_rtps-r52-rtems)/{build,$(RTPS_R52_RTEMS_SYSROOT)} $(S_rtps-r52-rtems)/configure
+.PHONY: $(B_rtps-r52-rtems) $(B_rtps-r52-rtems)/clean
+.PHONY: $(B_rtps-r52-rtems)/build/clean $(B_rtps-r52-rtems)/$(RTPS_R52_RTEMS_SYSROOT)/clean
+
+$(B_rtps-r52-rtems)/$(RTPS_R52_RTEMS_INSTALL_PATH)/Makefile.inc \
+: $(call mod-prereq,rtps-r52-rtems) ;
+
+
+MODULES += rtps-r52-hpsc-rtems
+L_rtps-r52-hpsc-rtems := rtps/r52/hpsc-rtems
+B_rtps-r52-hpsc-rtems := $(PROF_BLD)/rtps/r52/hpsc-rtems
+S_rtps-r52-hpsc-rtems := $(call src,rtps-r52-hpsc-rtems)
+
+RTPS_R52_HPSC_RTEMS_IMG_DIR := rtps-r52/o-optimize
+
+RTPS_R52_HPSC_RTEMS_ARGS := RTEMS_MAKEFILE_PATH=$(abspath $(B_rtps-r52-rtems)/$(RTPS_R52_RTEMS_INSTALL_PATH))
+
+# depend on the nested build for rtps-r52-rtems
+$(B_rtps-r52-hpsc-rtems): $(call src-ok,rtps-r52-hpsc-rtems) $(B_rtps-r52-rtems)
+	$(MAKE) -C $(S_rtps-r52-hpsc-rtems) $(RTPS_R52_HPSC_RTEMS_ARGS) install
+$(B_rtps-r52-hpsc-rtems)/clean:
+	[ ! -d $(S_rtps-r52-hpsc-rtems) ] || \
+		[  ! -f $(B_rtps-r52-rtems)/$(RTPS_R52_RTEMS_INSTALL_PATH)/Makefile.inc ] || \
+		$(MAKE) -C $(S_rtps-r52-hpsc-rtems) $(RTPS_R52_HPSC_RTEMS_ARGS) clean
+	rm -rf $(@D)/rtems.uimg
+.PHONY: $(B_rtps-r52-hpsc-rtems) $(B_rtps-r52-hpsc-rtems)/clean
+
+$(S_rtps-r52-hpsc-rtems)/$(RTPS_R52_HPSC_RTEMS_IMG_DIR)/rtps-r52.img \
+: $(call mod-prereq,rtps-r52-hpsc-rtems) ;
+
+$(B_rtps-r52-hpsc-rtems)/rtems.uimg : $(S_rtps-r52-hpsc-rtems)/$(RTPS_R52_HPSC_RTEMS_IMG_DIR)/rtps-r52.img \
+	$(call mod-prereq,rtps-r52-hpsc-rtems) | $(B_rtps-r52-hpsc-rtems)/
+	$(COPY) $< $@
+
+
 MODULES += rtps-r52-uboot
 L_rtps-r52-uboot := rtps/r52/u-boot
 B_rtps-r52-uboot := $(PROF_BLD)/rtps/r52/u-boot
