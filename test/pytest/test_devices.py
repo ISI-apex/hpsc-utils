@@ -91,6 +91,23 @@ def expect_hpps_linux_shutdown(conn):
         idx = conn.expect([step, hpps_linux_boot_steps[0]])
         assert idx == 0, "clean shutdown did not happen: missed step: " + step
 
+def hpps_linux_login(conn):
+    conn.sendline('root')
+    assert(conn.expect('root@hpsc-chiplet:~# ') == 0)
+
+def hpps_linux_reboot(conn):
+    # TODO: add test like this one but where whole machine (Qemu) is restarted
+    # currently HPPS Linux does not activate the watchdog by default, so
+    # we need to activate it before issuing the 'shutdown' command.
+    conn.sendline("taskset -c 0 /opt/hpsc-utils/wdtester " + \
+            "/dev/watchdog0 0 1") # 1=exit
+
+    conn.sendline("shutdown -h now")
+
+    expect_hpps_linux_boot(conn)
+    hpps_linux_login(conn)
+
+
 class TestDMA(SSHTester):
     testers = ["dma-tester.sh"]
 
@@ -349,17 +366,7 @@ class TestSRAM(SSHTester):
         sram_before_reboot = re.search(r'Latest SRAM contents:(.+)',
                 output, flags=re.DOTALL).group(1)
 
-        # TODO: add test like this one but where whole machine (Qemu) is restarted
-        # currently HPPS Linux does not activate the watchdog by default, so
-        # we need to activate it before issuing the 'shutdown' command.
-        hpps_serial.sendline("taskset -c 0 " +
-                "/opt/hpsc-utils/wdtester /dev/watchdog0 0 1") # 1=exit
-        hpps_serial.sendline("shutdown -h now")
-
-        expect_hpps_linux_boot(hpps_serial)
-
-        hpps_serial.sendline('root')
-        assert(hpps_serial.expect('root@hpsc-chiplet:~# ') == 0)
+        hpps_linux_reboot(hpps_serial)
 
         # after the reboot, read the SRAM contents to verify that they haven't
         # changed
