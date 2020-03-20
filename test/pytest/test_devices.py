@@ -322,7 +322,9 @@ class TestWDTimer(SSHTester):
 
         time_wd_enabled = time.time()
         while time.time() - time_wd_enabled < WD_TIMEOUT_SEC * 1.25: # 25% margin
-            assert(hpps_serial_per_fnc.expect("Kicking watchdog: yes") == 0)
+            idx = hpps_serial_per_fnc.expect(
+                    ["Kicking watchdog: yes", hpps_linux_boot_steps[0]])
+            assert idx == 0, "unexpected reboot of HPPS"
             time.sleep(2)
         # at this point, the fixture cleanup will terminate Qemu (we
         # cannot reuse this Qemu for the other core tests, because
