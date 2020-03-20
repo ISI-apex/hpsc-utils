@@ -11,8 +11,9 @@ include $(CONF)/lib-hpps-smmu/Makefile
 include $(CONF)/lib-hpps-wdt/Makefile
 include $(CONF)/lib-hpps-rti/Makefile
 include $(CONF)/lib-hpps-dma/Makefile
-# The SMC-353 driver in Linux supports only one interface at a time
+# Pick which chip to connect to the SMC-353's SRAM interface
 # include $(CONF)/lib-hpps-smc-sram-nor/Makefile
+include $(CONF)/lib-hpps-smc-sram-nvram/Makefile
 include $(CONF)/lib-hpps-smc-nand-jffs2/Makefile
 include $(CONF)/lib-hpps-linux-msg-mbox/Makefile
 include $(CONF)/lib-hpps-linux-msg-shmem/Makefile

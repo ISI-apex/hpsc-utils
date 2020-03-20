@@ -20,8 +20,6 @@ SHARE += lib-hpps-yocto
 include $(CONF)/lib-hpps-yocto-nand-rootfs/Makefile
 include $(CONF)/lib-hpps-full/Makefile
 include $(CONF)/lib-hpps-eth-cdns/Makefile
-# TODO: can this be added to full?
-include $(CONF)/lib-hpps-smc-sram-nvram/Makefile
 include $(CONF)/lib-hpps-linux-tests-all/Makefile
 
 $(PROF_HOME)/test/qemu: TESTS_FILTER+=\
