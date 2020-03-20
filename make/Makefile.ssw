@@ -1012,13 +1012,23 @@ $(PROF_BLD)/hpps/prof.yocto.rootfs.tar.gz: | $(PROF_BLD)/hpps/
 # PRIV can be set to 1 at time of invoking make.
 # To support modules that share a source trees (actual shared common files),
 # add conditionals: copy only modules without a parent, clean only modules.
+
+# The exclude set doesn't need to be perfect, but must be generic enough to
+# not exclude a file that could be a source file.
+RSYNC_PRIV_EXCLUDE=.git/
+# Workaround to make vanished files warning from rsync non-fatal (files vanish
+# when building the origin source tree concurrently with privatizing).
+define rsync
+$(RSYNC) $(1); RC=$$$$?; (($$$$RC == 24)) && exit 0 || exit $$$$RC
+endef
 define src-rule
 $(PROF_OK)/$(L_$(1))/ok: | $(L_$(1)) $(PROF_OK)/$(L_$(1))/
 	touch $$@
 $(PROF_OK)/$(SRCDIR)/$(L_$(1))/ok: \
-			$(if $(P_$(1)),$(PROF_OK)/$(SRCDIR)/$(L_$(P_$(1)))/ok) | $(L_$(1)) \
-	$(PROF_OK)/$(SRCDIR)/$(L_$(1))/ $(PROF_SRC)/$(L_$(1))/
-	$(if $(P_$(1)),,$(RSYNC) -aq --exclude=.git/ $(L_$(1))/ $(PROF_SRC)/$(L_$(1)))
+			$(if $(P_$(1)),$(PROF_OK)/$(SRCDIR)/$(L_$(P_$(1)))/ok) \
+			| $(L_$(1)) $(PROF_OK)/$(SRCDIR)/$(L_$(1))/ $(PROF_SRC)/$(L_$(1))/
+	$(if $(P_$(1)),,$(call rsync,-aq $(patsubst %,--exclude=%,$(RSYNC_PRIV_EXCLUDE)) \
+				$(L_$(1))/ $(PROF_SRC)/$(L_$(1))))
 	$(if $(filter $(1),$(MODULES)),$$(MAKE) PROF=$(PROF) PRIV=$(PRIV) CLEAN=% $(B_$(1))/clean)
 	touch $$@
 .PHONY: $(PROF_SRC)/$(L_$(1))
