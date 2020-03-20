@@ -1,6 +1,6 @@
-# [LIB] Add a specified subset of userspace tests to initramfs image for
-# HPPS Linux. Including profile must provide list of paths in
-# hpps/linux-tests.paths
+# [LIB] Add a specified subset of userspace tests to initramfs image and/or
+# root file system image for HPPS Linux. Including profile must provide list of
+# paths in hpps/linux-tests.paths
 
 $(call push-prof)
 # includes
@@ -18,5 +18,6 @@ $(PROF_BLD)/hpps/linux-tests.fr.dir: \
 	fakeroot -i $<.fr -s $@.fr \
 		rsync -aq --files-from=$(PROF_BLD)/hpps/linux-tests.paths $</ $@/
 
+$(PROF_BLD)/hpps/rootfs.fs: $(PROF_BLD)/hpps/linux-tests.fr.dir
 $(PROF_BLD)/hpps/initramfs.fs: $(PROF_BLD)/hpps/linux-tests.fr.dir
 $(call dir-tree-rule,$(PROF_CONF)/hpps/initramfs.dir)
