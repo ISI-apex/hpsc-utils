@@ -1016,7 +1016,7 @@ $(PROF_BLD)/hpps/prof.yocto.rootfs.tar.gz: | $(PROF_BLD)/hpps/
 
 # The exclude set doesn't need to be perfect, but must be generic enough to
 # not exclude a file that could be a source file.
-RSYNC_PRIV_EXCLUDE=.git/
+RSYNC_PRIV_EXCLUDE=.git/ *.o *.a *.so
 # Workaround to make vanished files warning from rsync non-fatal (files vanish
 # when building the origin source tree concurrently with privatizing).
 define rsync
