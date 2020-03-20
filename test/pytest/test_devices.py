@@ -387,3 +387,88 @@ class TestSRAM(SSHTester):
         # return the SRAM contents to their original state
         out, output = self.run_tester_on_host(host, 0, [], ["-s", "100", "-i", "-2"])
         assert out.returncode == 0, eval(pytest.run_fail_str)
+
+class TestNAND(SSHTester):
+    @pytest.mark.timeout(2 * HPPS_LINUX_BOOT_TIME_S + HPPS_LINUX_SSH_TIME_S + \
+            HPPS_LINUX_SHUTDOWN_TIME_S)
+    def test_non_volatility(self, hpps_serial, host):
+        """Verify that a file created on the NAND-based rootfs is still present
+        after rebooting HPPS."""
+        test_dir = "/home/root/"
+        test_file = "nand_test_file"
+
+        # create the test_file
+        out, output = self.run_cmd_on_host(host, "touch " + test_dir + test_file)
+
+        hpps_linux_reboot(hpps_serial)
+
+        # after the reboot, check that the test_file is still there
+        out, output = self.run_cmd_on_host(host, "ls " + test_dir)
+        assert(test_file in output), "File " + test_file + \
+            " was not found among the following files listed in directory " + \
+            test_dir + ":\n" + output
+
+        # finally, remove the test_file
+        out, output = self.run_cmd_on_host(host, "rm " + test_dir + test_file)
+
+class TestParallelScaling(SSHTester):
+    nas_ep_class = "S"
+    tester_remote_path = "/opt/nas-parallel-benchmarks/NPB3.3.1-OMP/bin/ep." + \
+        nas_ep_class + ".x"
+
+    @pytest.mark.timeout(HPPS_LINUX_BOOT_TIME_S + HPPS_LINUX_SSH_TIME_S)
+    def test_verify_HPPS_core_count(self, qemu_instance_per_mdl, host):
+        """Check the entries in /proc/cpuinfo to confirm that the HPPS has 8 cores"""
+        hpps_core_count = 8
+        out, output = self.run_cmd_on_host(host, "cat /proc/cpuinfo")
+        proc_nums = re.findall(r"processor\s+\S+\s+(\S+)", output)
+        assert(len(proc_nums) == hpps_core_count), \
+                "The list of processor numbers in /proc/cpuinfo is " + \
+                str(proc_nums)
+
+        for i in range(hpps_core_count):
+            assert(str(i) in proc_nums), "Processor " + str(i) + \
+                    " is missing from the processor list: " + str(proc_nums) + \
+                    " from /proc/cpuinfo"
+
+    def test_OMP_speedup(self, qemu_instance_per_mdl, host):
+        """Verify that OMP scaling the NAS EP benchmark on the HPPS cores leads
+        to speedup.
+
+        NOTE: This test often fails on AWS CodeBuild using 8 vCPUs when scaling
+        from 4 to 8 OMP threads.  This is because the vCPUs are overloaded-
+        running on 72 vCPUs solves the problem.
+        """
+        executed_thread_counts = []
+        executed_cpu_times = []
+        for num_threads in [1,2,4,8]:
+            # first set OMP_NUM_THREADS and OMP_PROC_BIND, then run the tester
+            out, output = self.run_cmd_on_host(host, "\"export OMP_NUM_THREADS=" + \
+                    str(num_threads) +"; export OMP_PROC_BIND=TRUE; " + \
+                    self.tester_remote_path + "\"")
+
+            cpu_time = float(re.search(r"(\S+)$", \
+                    re.search(r"CPU Time =(\s+)(\S+)", output).group(0))
+                    .group(0))
+            executed_thread_counts.append(num_threads)
+            executed_cpu_times.append(cpu_time)
+
+            returncode = 0
+            if (num_threads > 1):
+                if (cpu_time >= prior_cpu_time):
+                    if (num_threads == 2):
+                        returncode = 1
+                    elif (num_threads == 4):
+                        returncode = 2
+                    elif (num_threads == 8):
+                        returncode = 3
+            assert returncode == 0, "NAS EP class " + self.nas_ep_class + \
+                    " run times for " + str(executed_thread_counts) + \
+                    " OMP threads are " + str(executed_cpu_times) + \
+                    " seconds respectively."
+            prior_cpu_time = cpu_time
+
+        # This print statement will only display if pytest is passed the "-s" flag
+        print("\nNAS EP class " + self.nas_ep_class + " run times for " +
+                str(executed_thread_counts) + " OMP threads are " +
+                str(executed_cpu_times) + " seconds respectively.")
