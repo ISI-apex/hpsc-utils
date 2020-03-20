@@ -142,6 +142,7 @@ PROF_BLD:=$(PROF_HOME)/bld
 PROF_SRC:=$(PROF_HOME)/$(SRCDIR)
 PROF_OK:=$(PROF_HOME)/ok
 PROF_RUN:=$(PROF_HOME)/$(RUNDIR)
+PROF_TEST:=$(PROF_HOME)/test
 PROF_PROF:=$(PROF_HOME)/$(PROFDIR)
 
 # Directories with artifacts that should be empied but kept on clean,

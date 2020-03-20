@@ -120,6 +120,39 @@ QEMU_ARGS=\
 $(PROF_RUN)/qemu: $(PROF_BLD)/qemu/preload.mem.args
 $(PROF_RUN)/qemu: PROF_RUN_ARGS+=$(QEMU_ARGS)
 
+# Qemu test targets
+
+# Some tests connect to the target via SSH. Must be configured in .ssh/config:
+#	Host hpsc-hpps-qemu
+#	     HostName localhost
+#	     User root
+#	     Port 3088 # take from output of run target
+#	     StrictHostKeyChecking no
+#	     UserKnownHostsFile=/dev/null
+TEST_HPPS_SSH_HOST := hpsc-hpps-qemu
+
+# We don't clean the run directory (NV memory content) automatically, we leave
+# that to the user for manual choice of when to clean just like with run. For a
+# prestine (and uncorrupted) state for tests, each time Qemu is invoked (from
+# within pytest fixture via --qemu-cmd), the run artifacts should be
+# reinitialized with the build artifacts (i.e.  built memory images should be
+# copied into run directory, particularly NAND which is prone to corruption if
+# not cleanly unmounted). However, running from a fresh NV mem image takes
+# significantly longer (~5mins due to udev's HW DB updating), so we might not
+# want to do that except for in CI.
+$(PROF_TEST)/qemu: $(PROF_BLD)/qemu
+	cd $(HPSC_UTILS)/test/pytest && pytest -sv --durations=0 \
+		--run-dir='$(abspath $(PROF_RUN)/qemu)' \
+		--qemu-cmd="launch-qemu -D $(QEMU_ARGS)" \
+		--host="$(TEST_HPPS_SSH_HOST)" \
+		-k "$(TESTS_FILTER)" $(ARGS)
+$(PROF_TEST)/qemu/%: PHONY
+	$(MAKE) $(PROF_TEST)/qemu TESTS_FILTER="$*"
+# alias, because /test target uses same run/ directory as /run target
+$(PROF_TEST)/qemu/clean: $(PROF_RUN)/qemu/clean
+.PHONY: $(PROF_TEST)/qemu $(PROF_TEST)/qemu/clean
+
+
 # Zebu rules for building and preloading images from cross-platform memory map
 
 $(PROF_BLD)/zebu/preload.zebu.map: $(PROF_BLD)/preload.exp.mem.map \

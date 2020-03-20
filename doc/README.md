@@ -553,6 +553,40 @@ The platform-specific artifacts for Zebu in `prof/PROFILE/bld/zebu` are:
 * `preload.zebu.mem.map`: directives for loading images into memories for Zebu
    TCL scripts
 
+Test
+====
+
+HPSC SSW stack includes a test suite implemented using PyTest harness
+that invokes Qemu and runs tests against the target software running
+in it. The test harness invokes Qemu in a very similar way to the
+invocation through the run target.
+
+Each profile defines which tests it supports. Note that if the profile
+does not define the set of tests at all, then the default test target
+will attempt to run all tests which will fail.
+
+To run the tests for a profile:
+
+    make ssw/prof/PROFILE/test/qemu
+
+To run a specific test named `TEST_NAME`:
+
+    make ssw/prof/PROFILE/test/qemu/TEST_NAME
+
+To run a specific set of tests selected by a PyTest filter pattern (see `-k`
+argument to pytest), e.g. to choose tests in classes named `TestFoo` and
+`TestBar`:
+
+    make ssw/prof/PROFILE/test/qemu TESTS_FILTER="TestFoo or TestBar"
+
+Test test target uses the same directory as the run target for the runtime
+copies of the nonvolatile memory images. To clean this state, such that it is
+re-initialized from the built artifacts use the following target (which is just
+an alias to the `.../run/clean` target):
+
+    make ssw/prof/PROFILE/test/qemu/clean
+
+
 Troubleshooting
 ===============
 
