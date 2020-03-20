@@ -961,7 +961,7 @@ YOCTO_CONF := $(YOCTO_BB)/conf
 YOCTO_DL_DIR ?= $(L_hpps-yocto)/poky_dl
 YOCTO_ENV := poky/oe-init-build-env
 YOCTO_CONFS:=local.conf bblayers.conf
-YOCTO_CONF_PATHS=$(patsubst %,$(YOCTO_CONF)/%,$(YOCTO_CONFS))
+YOCTO_CONF_PATHS:=$(patsubst %,$(YOCTO_CONF)/%,$(YOCTO_CONFS))
 YOCTO_TARGET:=core-image-hpsc
 YOCTO_IMG := tmp-glibc/deploy/images/hpsc-chiplet/core-image-hpsc-hpsc-chiplet.tar.gz
 
@@ -974,6 +974,9 @@ $(YOCTO_CONF)/local.conf: $(PROF_BLD)/hpps/yocto-local.conf | $(YOCTO_CONF)/
 	sed 's@___YOCTO_DL_DIR___@$(abspath $(YOCTO_DL_DIR))@g' $< > $@
 $(YOCTO_CONF)/bblayers.conf: $(PROF_BLD)/hpps/yocto-bblayers.conf | $(YOCTO_CONF)/
 	sed 's@___YOCTO_SRC_DIR___@$(abspath $(L_hpps-yocto))@g' $< > $@
+$(YOCTO_CONF)/clean: $(B_hpps-yocto)/clean
+	rm -rf $(YOCTO_CONF_PATHS)
+.PHONY: $(YOCTO_CONF)/clean
 
 $(B_hpps-yocto): $(YOCTO_CONF_PATHS)
 	source $(S_hpps-yocto)/$(YOCTO_ENV) $(YOCTO_BB) && bitbake $(YOCTO_TARGET)
@@ -981,18 +984,19 @@ $(B_hpps-yocto)/fetch: $(YOCTO_CONF_PATHS)
 	source $(S_hpps-yocto)/$(YOCTO_ENV) $(YOCTO_BB) && \
 		bitbake $(YOCTO_TARGET) --runall="fetch"
 .PHONY: $(B_hpps-yocto)/fetch
-$(B_hpps-yocto)/build/%: $(YOCTO_CONF_PATHS) PHONY
+$(B_hpps-yocto)/target/%: $(YOCTO_CONF_PATHS) PHONY
 	source $(S_hpps-yocto)/$(YOCTO_ENV) $(YOCTO_BB) && bitbake $*
-$(B_hpps-yocto)/clean/%: $(YOCTO_CONF_PATHS) PHONY
+$(B_hpps-yocto)/target/%/clean: $(YOCTO_CONF_PATHS) PHONY
 	source $(S_hpps-yocto)/$(YOCTO_ENV) $(YOCTO_BB) && bitbake -c clean $*
+# cleans the rootfs image only
 $(B_hpps-yocto)/clean:
+	[[ ! -d $(S_hpps-yocto) $(foreach c,$(YOCTO_CONF_PATHS),|| ! -f "$(c)") ]] || \
+		source $(S_hpps-yocto)/$(YOCTO_ENV) $(YOCTO_BB) && \
+			bitbake -c cleanall $(YOCTO_TARGET)
+$(B_hpps-yocto)/clean/all:
 	@$(if $(filter $(CLEAN),yocto),true,false) || \
 		( echo "$@: group 'yocto' is locked (to clean it set CLEAN=yocto)." 2>&1 && exit 1 )
-	[[ ! -d $(S_hpps-yocto) $(foreach c,$(YOCTO_CONF_PATHS),|| ! -f "$(c)") ]] || ( \
-		source $(S_hpps-yocto)/$(YOCTO_ENV) $(YOCTO_BB) && \
-			bitbake -c clean $(YOCTO_TARGET) && \
-		rm -rf "$(YOCTO_CONF_PATHS)" \
-	)
+	rm -rf "$(B_hpps-yocto)"
 
 $(YOCTO_BB)/$(YOCTO_IMG): $(call mod-prereq,hpps-yocto) ;
 
