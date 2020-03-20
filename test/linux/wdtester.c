@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
             printf("Kicking watchdog: no\n");
             fflush(stdout);
         }
-        sleep(1);
+        sleep(2);
     }
     printf("Stopping\n");
     fflush(stdout);
