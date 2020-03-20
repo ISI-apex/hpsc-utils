@@ -1,1 +1,1 @@
-mkdir mnt/nor
+mkdir -p mnt/nor

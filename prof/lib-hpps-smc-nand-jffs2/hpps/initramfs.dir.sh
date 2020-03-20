@@ -1,1 +1,1 @@
-mkdir mnt/nand
+mkdir -p mnt/nand
