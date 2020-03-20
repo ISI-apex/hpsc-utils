@@ -285,7 +285,8 @@ $(PROF_BLD)/%.cpp.dts: $(PROF_BLD)/%.dts
 $(PROF_BLD)/%.dtb: $(PROF_BLD)/%.cpp.dts
 		dtc -q -I dts -O dtb -o $@ $<
 
-EXP_VARS=PROF=$(PROF) PROF_HOME=$(PROF_HOME) PROF_BLD=$(PROF_BLD) ROOT=.
+EXP_VARS=PROF=$(PROF) PROF_HOME=$(PROF_HOME) \
+	 PROF_BLD=$(PROF_BLD) PROF_CONF=$(PROF_CONF) ROOT=.
 $(PROF_BLD)/%.exp.mem.map: $(PROF_BLD)/%.mem.map
 	$(EXP_VARS) expandvars -o $@ $<
 $(PROF_BLD)/%.exp.ini: $(PROF_BLD)/%.ini
