@@ -22,6 +22,12 @@ BINS = \
 	offchip-sram-tester \
 	mbox-server-tester \
 
+SCRIPTS = \
+	dma-tester.sh \
+	interrupt-affinity-tester.sh \
+	rtit-tester.sh \
+	wdt-kicker.sh \
+
 .PHONY: $(TOPTARGETS) $(SUBDIRS)
 
 all: $(SUBDIRS) $(BINS)
@@ -57,4 +63,4 @@ clean: $(SUBDIRS)
 
 install: $(BINS)
 	mkdir -p $(DEST)
-	install $(BINS) $(DEST)
+	install $(BINS) $(SCRIPTS) $(DEST)
