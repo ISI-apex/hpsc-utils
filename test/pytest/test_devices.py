@@ -351,9 +351,11 @@ class TestSRAM(SSHTester):
                 output, flags=re.DOTALL).group(1)
 
         # TODO: add test like this one but where whole machine (Qemu) is restarted
-        # currently rebooting HPPS requires having the watchdog time out
-        hpps_serial_per_fnc.sendline("taskset -c 0 " +
-                "/opt/hpsc-utils/wdtester /dev/watchdog0 0")
+        # currently HPPS Linux does not activate the watchdog by default, so
+        # we need to activate it before issuing the 'shutdown' command.
+        hpps_serial.sendline("taskset -c 0 " +
+                "/opt/hpsc-utils/wdtester /dev/watchdog0 0 1") # 1=exit
+        hpps_serial.sendline("shutdown -h now")
 
         expect_hpps_linux_boot(hpps_serial_per_fnc)
 
