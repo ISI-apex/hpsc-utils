@@ -39,6 +39,15 @@ build it from source and use the absolute path to your build instead of
 
     $ echo 'alias make="make SHELL=/bin/bash"' >> .hpscrc
 
+You may observe hangs or delays (up to minutes) with CPU utilization
+during builds of HPSC SSW, during the steps that involve building initramfs
+images with `fakeroot`. This issue seems to be due to buggy `faked-tcp`
+(observed in fakeroot v1.24 on multiple distributions). To prevent this issue,
+switch from the TCP to the SYSV variant of fakeroot using the `alternatives`
+system (on CentOS and Debian/Ubuntu), as root:
+
+   # update-alternatives --set fakeroot /usr/bin/fakeroot-sysv
+
 For users of the `vim` editor, to apply syntax highlighting to some of
 the custom config files, add to your `~/.vimrc`:
 
