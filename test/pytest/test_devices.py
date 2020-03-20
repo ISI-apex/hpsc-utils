@@ -341,9 +341,8 @@ class TestSRAM(SSHTester):
     # watchdog timeout), then check that the SRAM array is the same.
     @pytest.mark.timeout(2 * HPPS_LINUX_BOOT_TIME_S + HPPS_LINUX_SSH_TIME_S + \
             HPPS_LINUX_SHUTDOWN_TIME_S)
-    def test_non_volatility(self, hpps_serial_per_fnc, host): # TODO: per_mdl shoud work
-        # increment the first 100 elements of the SRAM array by 2, then reboot
-        # HPPS
+    def test_non_volatility(self, hpps_serial, host):
+        # increment the first 100 elements of the SRAM array by 2
         out = self.run_tester_on_host(host, 0, [], ["-s", "100", "-i", "2"])
         assert out.returncode == 0, eval(pytest.run_fail_str)
         output = out.stdout.decode('ascii')
@@ -357,10 +356,10 @@ class TestSRAM(SSHTester):
                 "/opt/hpsc-utils/wdtester /dev/watchdog0 0 1") # 1=exit
         hpps_serial.sendline("shutdown -h now")
 
-        expect_hpps_linux_boot(hpps_serial_per_fnc)
+        expect_hpps_linux_boot(hpps_serial)
 
-        hpps_serial_per_fnc.sendline('root')
-        assert(hpps_serial_per_fnc.expect('root@hpsc-chiplet:~# ') == 0)
+        hpps_serial.sendline('root')
+        assert(hpps_serial.expect('root@hpsc-chiplet:~# ') == 0)
 
         # after the reboot, read the SRAM contents to verify that they haven't
         # changed
