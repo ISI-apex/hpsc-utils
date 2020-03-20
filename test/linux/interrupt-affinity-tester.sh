@@ -75,15 +75,17 @@ function do_dma_on_specified_channel()
     echo 1 > /sys/module/dmatest/parameters/iterations
     echo 3000 > /sys/module/dmatest/parameters/timeout
     echo "$chan" > /sys/module/dmatest/parameters/channel
-    local dmesg_a=$(dmesg | tail -n $DMESG_BUF_LEN)
+
+    local tmp_prefix=/tmp/hpsc-test-intaff-
+    dmesg | tail -n $DMESG_BUF_LEN > ${tmp_prefix}dmesg_a
 
     # start the test (returns immediately)
     echo 1 > /sys/module/dmatest/parameters/run
 
     # get only new lines in dmesg - ignore lines unrelated to dmatest and those
     # that fell out of buffer range (from earlier tests)
-    local dmesg_b=$(dmesg | tail -n $DMESG_BUF_LEN)
-    local dmesg_new=$(diff <(echo "$dmesg_a") <(echo "$dmesg_b") -U 0 |
+    dmesg | tail -n $DMESG_BUF_LEN > ${tmp_prefix}dmesg_b
+    local dmesg_new=$(diff "${tmp_prefix}dmesg_a" "${tmp_prefix}dmesg_b" -U 0 |
                       grep "dmatest" | grep -E "^\+\[" | cut -c2-)
     if ! check_dma_failures "$(echo "$dmesg_new" | grep "summary")"; then
         echo "dmatest failed for channel: $chan" >&2
