@@ -147,7 +147,8 @@ PROF_PROF:=$(PROF_HOME)/$(PROFDIR)
 # Directories with artifacts that should be empied but kept on clean,
 # so that "autocomplete" keep working (partially). Rules append, module
 # directories themselves added automatically for all modules.
-KEEP_DIRS=
+KEEP_DIRS_REL := trch hpps rtps rtps/r52 rtps/r52
+KEEP_DIRS := $(patsubst %,$(PROF_BLD)/%,$(KEEP_DIRS_REL))
 
 all: $(PROF_HOME)
 .PHONY: all
@@ -179,9 +180,6 @@ $(PROFDIR)/%/:
 # merged. In favor of brevity of profile overlays, we define most here. Too
 # we can't "append" prerequisites using an implicit pattern rule.
 
-KEEP_DIRS += $(PROF_BLD)/trch
-
-KEEP_DIRS += $(PROF_BLD)/hpps
 $(PROF_BLD)/hpps/conf.sh: | $(PROF_BLD)/hpps/
 
 # Merging rules. Each profile defines the inputs to merge as dependencies.
@@ -530,7 +528,6 @@ P_trch-bl0 := bm
 L_trch-bl0 := $(L_bm)/trch-bl0
 B_trch-bl0 := $(PROF_BLD)/trch/bl0
 S_trch-bl0 := $(call src,trch-bl0)
-KEEP_DIRS += $(PROF_BLD)/trch/bl0
 
 TRCH_BL0_ARGS=CROSS_COMPILE=$(CROSS_M4) $(MAKE_ARGS)
 
@@ -574,7 +571,6 @@ P_trch-bm := bm
 L_trch-bm := $(L_bm)/trch
 B_trch-bm := $(PROF_BLD)/trch/bm
 S_trch-bm := $(call src,trch-bm)
-KEEP_DIRS += $(PROF_BLD)/trch
 
 TRCH_BM_ARGS = CROSS_COMPILE=$(CROSS_M4) $(MAKE_ARGS)
 SYSCFG_SCHEMA:=syscfg-schema.json
@@ -612,7 +608,6 @@ P_trch-bm := bm
 L_rtps-r52-bm := $(L_bm)/rtps
 B_rtps-r52-bm := $(PROF_BLD)/rtps/r52/bm
 S_rtps-r52-bm := $(call src,rtps-r52-bm)
-KEEP_DIRS += $(PROF_BLD)/rtps
 
 RTPS_R52_BM_ARGS = CROSS_COMPILE=$(CROSS_R52) $(MAKE_ARGS)
 
@@ -796,7 +791,6 @@ MODULES += hpps-uboot
 L_hpps-uboot := hpps/u-boot
 B_hpps-uboot := $(PROF_BLD)/hpps/u-boot
 S_hpps-uboot := $(call src,hpps-uboot)
-KEEP_DIRS += $(PROF_BLD)/hpps
 
 HPPS_UBOOT_ARGS = CROSS_COMPILE=$(CROSS_A53) $(MAKE_ARGS)
 HPPS_UBOOT_BASE_CFG = configs/hpsc_hpps_defconfig
@@ -845,7 +839,6 @@ MODULES += hpps-linux
 L_hpps-linux := hpps/linux
 B_hpps-linux := $(PROF_BLD)/hpps/linux
 S_hpps-linux := $(call src,hpps-linux)
-KEEP_DIRS += $(PROF_BLD)/hpps
 
 HPPS_LINUX_ARCH := arch/arm64
 HPPS_LINUX_BOOT := $(HPPS_LINUX_ARCH)/boot
@@ -905,7 +898,6 @@ MODULES += hpps-busybox
 L_hpps-busybox := hpps/busybox
 B_hpps-busybox := $(PROF_BLD)/hpps/busybox
 S_hpps-busybox := $(call src,hpps-busybox)
-KEEP_DIRS += $(PROF_BLD)/hpps
 
 HPPS_BUSYBOX_ARGS = CROSS_COMPILE=$(CROSS_A53_LINUX) $(MAKE_ARGS)
 
@@ -936,7 +928,6 @@ MODULES += hpps-linux-tests
 L_hpps-linux-tests := $(HPSC_UTILS)/test/linux
 B_hpps-linux-tests := $(PROF_BLD)/hpps/linux-tests
 S_hpps-linux-tests := $(call src,hpps-linux-tests)
-KEEP_DIRS += $(PROF_BLD)/hpps/linux-tests
 
 HPPS_LINUX_TESTS_ARGS = CROSS_COMPILE=$(CROSS_A53_LINUX) CC=gcc $(MAKE_ARGS)
 
@@ -963,7 +954,6 @@ UNPRIV += hpps-yocto
 L_hpps-yocto := hpps/yocto
 B_hpps-yocto := $(PROF_BLD)/hpps/yocto
 S_hpps-yocto := $(call src,hpps-yocto)
-KEEP_DIRS += $(PROF_BLD)/hpps
 
 YOCTO_BB := $(B_hpps-yocto)/bb
 YOCTO_CONF := $(YOCTO_BB)/conf
