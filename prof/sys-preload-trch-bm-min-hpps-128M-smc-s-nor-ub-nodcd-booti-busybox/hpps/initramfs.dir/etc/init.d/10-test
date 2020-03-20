@@ -1,0 +1,2 @@
+# args: do_writes=0 (read-only test)
+/opt/hpsc-utils/offchip-sram-tester 0
