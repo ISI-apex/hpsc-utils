@@ -7,7 +7,7 @@ $(call push-prof)
 PROF_CONF:=$(CONF)/$(call pop-prof)
 
 # merge base
-$(PROF_BLD)/hpps/linux-tests.paths:
+$(PROF_BLD)/hpps/linux-tests.paths: | $(PROF_BLD)/hpps/
 
 
 $(PROF_BLD)/hpps/linux-tests/install.fr.dir: TEST_INSTALL_PATH=opt/hpsc-utils
