@@ -1,5 +1,5 @@
-# Load a bare-metal app (built image must be provided manually; no source code
-# available) into HPPS DRAM by HW emulator (fast).
+# Load a bare-metal app (profiles that include this profile
+# provide the image) into HPPS DRAM by HW emulator (fast).
 
 $(call push-prof)
 # includes

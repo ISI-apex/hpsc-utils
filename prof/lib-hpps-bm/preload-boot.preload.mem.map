@@ -1,5 +1,3 @@
 # MEMORY ID	BLOB ID              ADDR            FILE
-# note: this image must be provided manually (we don't have source code for a
-# Bare Metal App for Cortex-A53, but we might want to run images from
-# Synopsys).
-hpps.dram	hpps-fw           0x0000_0000         $PROF_BLD/hpps/mem.bin
+# profiles that include this profile must override the path to the image
+hpps.dram	hpps-fw           0x0000_0000         -

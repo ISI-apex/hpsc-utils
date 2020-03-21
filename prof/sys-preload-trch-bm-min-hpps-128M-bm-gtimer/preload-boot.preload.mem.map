@@ -1,0 +1,2 @@
+# MEMORY ID	BLOB ID              ADDR            FILE
+hpps.dram	hpps-fw           0x0000_0000        $PROF_BLD/hpps/baretest/gtimer_driver.bin
