@@ -1124,6 +1124,28 @@ $(PROF_BLD)/hpps/prof.yocto.rootfs.tar.gz: | $(PROF_BLD)/hpps/
 	@[ ! -z "$^" ] || ( echo "ERROR: no source prereq for: $@" 2>&1 && exit 1 )
 	$(COPY) $< $@
 
+MODULES += hpps-baretest
+L_hpps-baretest := hpps/baretest
+B_hpps-baretest := $(PROF_BLD)/hpps/baretest
+S_hpps-baretest := $(call src,hpps-baretest)
+
+HPPS_BARETEST_ARGS = CROSS_COMPILE=$(CROSS_A53) $(MAKE_ARGS)
+
+$(B_hpps-baretest): $(call src-ok,hpps-baretest)
+	$(MAKE) -C $(S_hpps-baretest) $(HPPS_BARETEST_ARGS)
+$(B_hpps-baretest)/clean:
+	[ ! -d $(S_hpps-baretest) ] || \
+		$(MAKE) -C $(S_hpps-baretest) $(HPPS_BARETEST_ARGS) clean
+
+# TODO: add the .bin's for the other tests (once all on same branch)
+$(S_hpps-baretest)/$(HPPS_BARETEST_BLD)/gtimer_driver.bin \
+: $(call mod-prereq,hpps-baretest) ;
+
+$(B_hpps-baretest)/gtimer_driver.bin: \
+	$(S_hpps-baretest)/$(HPPS_BARETEST_BLD)/gtimer_driver.bin \
+	$(call mod-prereq,hpps-baretest) | $(B_hpps-baretest)/
+	$(COPY) $< $@
+
 ## Common rules for all modules
 
 # Support for optionally privatizing sources by making a copy.
