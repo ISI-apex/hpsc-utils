@@ -637,6 +637,48 @@ $(B_rtps-r52-bm)/rtps.dbg.elf \
 							$(call mod-prereq,rtps-r52-bm) | $(B_rtps-r52-bm)/
 	$(COPY) $< $@
 
+MODULES += trch-rtems
+L_trch-rtems := trch/rtems
+B_trch-rtems := $(PROF_BLD)/trch/rtems
+S_trch-rtems := $(call src,trch-rtems)
+
+TRCH_RTEMS_TARGET := arm-rtems5
+TRCH_RTEMS_BSP := hpsc_trch_qemu
+
+TRCH_RTEMS_SYSROOT := sysroot
+TRCH_RTEMS_INSTALL_PATH := $(TRCH_RTEMS_SYSROOT)/$(TRCH_RTEMS_TARGET)/$(TRCH_RTEMS_BSP)
+
+# required for sleep functions to work when running in QEMU
+TRCH_RTEMS_VARS+=CLOCK_DRIVER_USE_FAST_IDLE=0
+# prevents RTEMS from crashing QEMU on failures
+TRCH_RTEMS_VARS+=BSP_RESET_BOARD_AT_EXIT=0
+
+$(S_trch-rtems)/configure.ac: $(call src-ok,trch-rtems) ;
+
+# sb-bootsrap is not installed, so SDK can't add it to PATH
+$(S_trch-rtems)/configure: $(S_trch-rtems)/configure.ac
+	cd $(@D) && $(RTEMS_SOURCE_BUILDER)/sb-bootstrap
+$(B_trch-rtems)/build/config.status: $(S_trch-rtems)/configure \
+	| $(B_trch-rtems)/build/ $(B_trch-rtems)/$(TRCH_RTEMS_SYSROOT)/
+	cd $(@D) && $(TRCH_RTEMS_VARS) $(abspath $(S_trch-rtems)/configure) \
+		--prefix="$(abspath $(B_trch-rtems)/$(TRCH_RTEMS_SYSROOT))" \
+		--target=$(TRCH_RTEMS_TARGET) --enable-rtemsbsp=$(TRCH_RTEMS_BSP) \
+		--disable-networking
+$(B_trch-rtems): \
+	$(B_trch-rtems)/build/config.status
+	$(MAKE) -C $(B_trch-rtems)/build $(TRCH_RTEMS_VARS) install
+$(B_trch-rtems)/build/clean:
+	$(MAKE) -C $(@D) clean
+$(B_trch-rtems)$(TRCH_RTEMS_SYSROOT)/clean:
+	rm -rf $(@D)
+$(B_trch-rtems)/clean:
+	rm -rf $(B_trch-rtems)/{build,$(TRCH_RTEMS_SYSROOT)} $(S_trch-rtems)/configure
+.PHONY: $(B_trch-rtems) $(B_trch-rtems)/clean
+.PHONY: $(B_trch-rtems)/build/clean $(B_trch-rtems)/$(TRCH_RTEMS_SYSROOT)/clean
+
+$(B_trch-rtems)/$(TRCH_RTEMS_INSTALL_PATH)/Makefile.inc \
+: $(call mod-prereq,trch-rtems) ;
+
 MODULES += rtps-r52-rtems
 L_rtps-r52-rtems := rtps/r52/rtems
 B_rtps-r52-rtems := $(PROF_BLD)/rtps/r52/rtems
