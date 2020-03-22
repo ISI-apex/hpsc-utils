@@ -1,6 +1,8 @@
 export RANLIB ?= ranlib
 export STRIP ?= strip
 
+DO_STRIP ?= 1
+
 export CFLAGS += \
 	-Wall -Wextra -Wformat -Wformat-security \
 	-O1 -g \
@@ -50,6 +52,7 @@ mbox-multiple-core-tester.elf mbox-server-tester.elf mboxtester.elf: %.elf : %.o
 %.elf: %.c
 	$(CROSS_COMPILE)$(CC) $(CFLAGS) -o $@ $(OBJS) $< $(LDFLAGS)
 
+ifeq ($(DO_STRIP),1)
 # %: %.elf doesn't match for some reason
 define strip-rule
 $(1): $(1).elf
@@ -57,6 +60,10 @@ $(1): $(1).elf
 	$(CROSS_COMPILE)$(STRIP) $$@
 endef
 $(foreach b,$(BINS),$(eval $(call strip-rule,$(b))))
+else # DO_STRIP=0
+$(BINS): % : %.elf
+	cp $< $@
+endif # DO_STRIP=0
 
 clean: $(SUBDIRS)
 	rm -rf *.o *.elf *.out $(BINS)
