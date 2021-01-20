@@ -152,14 +152,14 @@ these tarballs:
 3. Manually download an archive with tarballs from file storage and extract it
 4. Fetch on a online host and transfer the fetched directory to the offline host
 
-The current recommendation is 2, because the upstream URLs from which tarballs
+The current recommendation is 3, because the upstream URLs from which tarballs
 are fetched have already become stale and are broken (404).
 
 #### Suboptions 1: already fetched
 
 Check that there are source tarballs in `sdk/sysroot/bld/fetch`.
 
-#### Suboption 2: automatically fe(ch
+#### Suboption 2: automatically fetch
 
 Nothing to do here, move on to running the build command.
 
