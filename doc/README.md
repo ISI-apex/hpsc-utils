@@ -144,16 +144,54 @@ the system, but those are expected to be present on most Linux systems.
 This section provides instructions on how to use the custom sysroot builder
 shipped in the HPSC SDK to build the sysroot.
 
-If the machine is offline without internet access, and if the HPSC source
-release you have did not ship the sysroot source tarballs (check
-`sdk/sysroot/bld/fetch`), then first fetch the source archives on a machine
-with internet acccess, and copy the folling directories to the same paths in
-the working copy of the source tree on the offline machine (in this example
-using Rsync over SSH):
+The sysroot is built from source tarballs, and there are three ways to obtain
+these tarballs:
+
+1. Source tarballs are already in the archive with the HPSC software release
+2. Automatically fetch on-demand when running the sysroot build target given below.
+3. Manually download an archive with tarballs from file storage and extract it
+4. Fetch on a online host and transfer the fetched directory to the offline host
+
+The current recommendation is 2, because the upstream URLs from which tarballs
+are fetched have already become stale and are broken (404).
+
+#### Suboptions 1: already fetched
+
+Check that there are source tarballs in `sdk/sysroot/bld/fetch`.
+
+#### Suboption 2: automatically fe(ch
+
+Nothing to do here, move on to running the build command.
+
+#### Suboption 3: manual download
+
+An archive with all source tarballs is available for download from this link
+(manually using your browser or using gdown CLI tool):
+
+        $ gdown https://drive.google.com/uc?id=1O1RgoAWTQT4SO3yaqPspMJyugSDnBT06
+
+Verify that the downloaded file is correct with:
+
+        $ md5sum hpsc-sdk-sysroot-tarballs-20200320.tar.gz
+        36ab40b473ea47d5e1cdbb0b07e730f0  hpsc-sdk-sysroot-tarballs-20200320.tar.gz
+
+Extract from within top-level `hpsc/` directory:
+
+        $ cd hpsc/
+        $ tar xf hpsc-sdk-sysroot-tarballs-20200320.tar.gz
+
+#### Suboption 4: transfer from online host
+
+If the machine is offline without internet access then you can fetch the source
+archives on a machine with Internet acccess, and copy the folling directories
+to the same paths in the working copy of the source tree on the offline machine
+(in this example using Rsync over SSH):
 
 	online_host$ cd hpsc
 	online_host$ make sdk/sysroot/fetch
 	online_host$ rsync -aq sdk/sysroot/bld/fetch/ offline_host:/path/to/hpsc/sdk/sysroot/bld/fetch/
+
+End of sub-sections on obtaining source tarballs.
 
 To build the sysroot and set it up as dependency for the SDK:
 
